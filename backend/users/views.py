@@ -3,8 +3,10 @@ from rest_framework import generics, status, permissions
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.authtoken.models import Token
-from django.contrib.auth import authenticate
+from django.contrib.auth import authenticate, get_user_model
 from .serializers import UserSerializer, RegisterSerializer
+
+User = get_user_model()
 
 
 class RegisterView(generics.CreateAPIView):
@@ -15,13 +17,14 @@ class RegisterView(generics.CreateAPIView):
     def post(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
+
+        # Save the user before accessing serializer.data
         user = serializer.save(
             name=request.data.get('name'),
             student_id=request.data.get('student_id'),
             college=request.data.get('college'),
             email=request.data.get('email')
         )
-        # Set the password for the user
         user.set_password(request.data.get('password'))
         user.save()
 
@@ -30,7 +33,7 @@ class RegisterView(generics.CreateAPIView):
 
         return Response({
             'token': token.key,
-            'user': UserSerializer(user).data
+            'user': UserSerializer(user).data  # Access serializer.data after saving
         }, status=status.HTTP_201_CREATED)
 
 
@@ -38,19 +41,19 @@ class LoginView(APIView):
     """API endpoint for user login"""
     permission_classes = [permissions.AllowAny]
 
-    def post(self, request):
-        username = request.data.get('username')
+    def post(self, request, *args, **kwargs):
+        email = request.data.get('email')
         password = request.data.get('password')
 
-        user = authenticate(username=username, password=password)
+        if not email or not password:
+            return Response({"error": "邮箱和密码是必填项"}, status=status.HTTP_400_BAD_REQUEST)
 
-        if user:
+        user = authenticate(request, username=email, password=password)
+        if user is not None:
             token, _ = Token.objects.get_or_create(user=user)
-            return Response({
-                'token': token.key,
-                'user': UserSerializer(user).data
-            })
-        return Response({'error': '用户名或密码不正确'}, status=status.HTTP_401_UNAUTHORIZED)
+            return Response({"token": token.key, "user": UserSerializer(user).data}, status=status.HTTP_200_OK)
+        else:
+            return Response({"error": "无效的邮箱或密码"}, status=status.HTTP_401_UNAUTHORIZED)
 
 
 class ProfileView(generics.RetrieveUpdateAPIView):

@@ -3,6 +3,7 @@ from django.db import models
 from django.conf import settings
 from videos.models import Video
 
+
 class AIHypothesis(models.Model):
     """
     Model to store AI-generated hypotheses for videos
@@ -13,19 +14,23 @@ class AIHypothesis(models.Model):
         ('Exploratory', '探索性/新颖联系'),
         ('Violating', '违背科学原理'),
     ]
-    
+
     video = models.ForeignKey(Video, on_delete=models.CASCADE, related_name='ai_hypotheses')
     content = models.TextField()
     ai_model = models.TextField(blank=True, null=True)
-    difficulty = models.CharField(max_length=20, choices=DIFFICULTY_CHOICES)
-    justification = models.TextField()
-    created_at = models.DateTimeField(auto_now_add=True)
-    
+    difficulty = models.CharField(max_length=20, choices=DIFFICULTY_CHOICES, null=True, blank=True)
+    justification = models.TextField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
+
     class Meta:
         ordering = ['difficulty']
-    
+
     def __str__(self):
-        return f"{self.get_difficulty_display()} hypothesis for {self.video.title}"
+        try:
+            return f"{self.get_difficulty_display()} hypothesis for {self.video.title}"
+        except Video.DoesNotExist:
+            return f"{self.get_difficulty_display()} hypothesis for a missing video"
+
 
 class UserHypothesis(models.Model):
     """
@@ -35,10 +40,10 @@ class UserHypothesis(models.Model):
     video = models.ForeignKey(Video, on_delete=models.CASCADE, related_name='user_hypotheses')
     content = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
-    
+
     class Meta:
         ordering = ['-created_at']
-    
+
     def __str__(self):
         return f"{self.user.username}'s hypothesis for {self.video.title}"
 
@@ -53,9 +58,9 @@ class HypothesisComparison(models.Model):
     selected_hypothesis = models.ForeignKey(AIHypothesis, on_delete=models.CASCADE, related_name='selections')
     reason = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
-    
+
     class Meta:
         ordering = ['-created_at']
-    
+
     def __str__(self):
         return f"{self.user.username}'s comparison for {self.video.title}"

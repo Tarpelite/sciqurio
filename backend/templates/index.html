@@ -172,7 +172,7 @@
           <div class="video-player">
             <video id="video-player-1" controls>
               <source src="https://example.com/video.mp4" type="video/mp4">
-              您的浏览器不支持视频播放。
+              <p>您的浏览器不支持视频播放，请<a href="https://example.com/video.mp4" download>点击此处下载视频</a>。</p>
             </video>
           </div>
           
@@ -243,7 +243,7 @@
           <div class="video-player">
             <video id="video-player-2" controls>
               <source src="https://example.com/video.mp4" type="video/mp4">
-              您的浏览器不支持视频播放。
+              <p>您的浏览器不支持视频播放，请<a href="https://example.com/video.mp4" download>点击此处下载视频</a>。</p>
             </video>
           </div>
           
@@ -264,13 +264,13 @@
             <p>请从以下两个假设中选择一个您认为更合理的：</p>
             
             <div class="hypothesis-cards">
-              <div class="hypothesis-card" data-hypothesis="A">
+              <div class="hypothesis-card" hypothesis-id=1>
                 <div class="card-selector"></div>
                 <h3>假设 A</h3>
                 <p>球体下沉速度减慢是由于液体的非牛顿流体特性，当受到外力时会增加粘度。</p>
               </div>
               
-              <div class="hypothesis-card" data-hypothesis="B">
+              <div class="hypothesis-card" hypothesis-id=2>
                 <div class="card-selector"></div>
                 <h3>假设 B</h3>
                 <p>球体下沉速度减慢是由于球体表面与液体之间形成了微小气泡，增加了浮力。</p>
@@ -326,6 +326,18 @@
 
   <!-- 粒子背景脚本 -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/particles.js/2.0.0/particles.min.js"></script>
+  <script src="static/js/user_op.js"></script>
+  <script src="static/js/video_op.js"></script>
+  <script src="static/js/hypothesis_op.js"></script>
   <script src="static/js/index.js"></script>
+  <script src="static/js/particle_background.js"></script>
+  <script>
+    document.querySelectorAll('.video-player').forEach(player => {
+      const video = player.querySelector('video');
+      video.onerror = () => {
+        alert('视频加载失败，请检查视频链接或稍后重试。');
+      };
+    });
+  </script>
 </body>
 </html>
