@@ -14,5 +14,8 @@ class User(AbstractUser):
     email = models.EmailField(unique=True)  # Ensure email is unique and required
     labels_count = models.IntegerField(default=0)  # Existing field
 
+    # Ensure is_superuser defaults to False
+    is_superuser = models.BooleanField(default=False)
+
     def __str__(self):
         return f"{self.name or self.username} - Student ID: {self.student_id or 'Not provided'} - College: {self.college or 'Not provided'}"

@@ -50,6 +50,15 @@ function showPage(pageId) {
     });
     document.getElementById(pageId).classList.add('active-page');
     window.scrollTo(0, 0);
+
+    // Synchronize video source for label-page-2
+    if (pageId === 'label-page-2') {
+        const video1 = document.getElementById('video-player-1');
+        const video2 = document.getElementById('video-player-2');
+        video2.src = video1.src; // Use the same video source
+        video2.currentTime = video1.currentTime; // Synchronize playback position
+        video2.load();
+    }
 }
 
 // 用户信息点击事件
@@ -103,7 +112,54 @@ function handleVideoResize() {
 }
 
 window.addEventListener('resize', handleVideoResize);
-document.addEventListener('DOMContentLoaded', handleVideoResize);
+document.addEventListener('DOMContentLoaded', function () {
+    handleVideoResize();
+
+    // Fetch and render leaderboard data
+    fetch('/api/users/leaderboard/')
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('无法加载排行榜数据');
+            }
+            return response.json();
+        })
+        .then(leaderboard => {
+            const tableBody = document.querySelector('.leaderboard-table tbody');
+            const leaderboardCards = document.querySelector('.leaderboard-cards');
+
+            // Clear existing leaderboard data
+            tableBody.innerHTML = '';
+            leaderboardCards.innerHTML = '';
+
+            // Populate leaderboard table
+            leaderboard.forEach(entry => {
+                const row = `
+                    <tr>
+                        <td class="rank">${entry.rank}</td>
+                        <td>${entry.name}</td>
+                        <td>${entry.labels_count}</td>
+                    </tr>
+                `;
+                tableBody.innerHTML += row;
+
+                // Populate leaderboard cards for mobile
+                const card = `
+                    <div class="leaderboard-card">
+                        <div class="rank">${entry.rank}</div>
+                        <div class="info">
+                            <div class="name">${entry.name}</div>
+                            <div class="count">${entry.labels_count} 个标注</div>
+                        </div>
+                    </div>
+                `;
+                leaderboardCards.innerHTML += card;
+            });
+        })
+        .catch(error => {
+            console.error('加载排行榜数据时出错:', error);
+            alert('加载排行榜数据失败，请稍后重试');
+        });
+});
 
 // 视频加载错误处理
 document.querySelectorAll('.video-player').forEach(player => {

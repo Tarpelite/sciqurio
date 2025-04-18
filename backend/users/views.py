@@ -5,6 +5,8 @@ from rest_framework.views import APIView
 from rest_framework.authtoken.models import Token
 from django.contrib.auth import authenticate, get_user_model
 from .serializers import UserSerializer, RegisterSerializer
+from rest_framework.permissions import AllowAny
+from .models import User
 
 User = get_user_model()
 
@@ -63,3 +65,16 @@ class ProfileView(generics.RetrieveUpdateAPIView):
 
     def get_object(self):
         return self.request.user
+
+
+class LeaderboardView(APIView):
+    """API endpoint for fetching the leaderboard"""
+    permission_classes = [AllowAny]
+
+    def get(self, request, *args, **kwargs):
+        users = User.objects.order_by('-labels_count')[:10]  # Top 10 users by labels_count
+        leaderboard = [
+            {"rank": index + 1, "name": user.name or user.username, "labels_count": user.labels_count}
+            for index, user in enumerate(users)
+        ]
+        return Response(leaderboard)

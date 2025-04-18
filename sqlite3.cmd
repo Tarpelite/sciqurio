@@ -17,4 +17,19 @@ VALUES
 
 SELECT * FROM hypotheses_aihypothesis;
 
+
+-- Insert random users into the users_user table
+INSERT INTO users_user (
+    username, email, password, is_staff, is_active, is_superuser, first_name, last_name, date_joined, labels_count
+)
+VALUES
+('张三', 'user1@example.com', 'pbkdf2_sha256$260000$randomhash1', 0, 1, 0, 'User', 'One', datetime('now'), 128),
+('李四', 'user2@example.com', 'pbkdf2_sha256$260000$randomhash2', 0, 1, 0, 'User', 'Two', datetime('now'), 112),
+('王五', 'user3@example.com', 'pbkdf2_sha256$260000$randomhash3', 0, 1, 0, 'User', 'Three', datetime('now'), 97),
+('赵六', 'user5@example.com', 'pbkdf2_sha256$260000$randomhash5', 0, 1, 0, 'User', 'Five', datetime('now'), 79);
+('秦七', 'user4@example.com', 'pbkdf2_sha256$260000$randomhash4', 0, 1, 0, 'User', 'Four', datetime('now'), 85),
+
+-- Verify the inserted data
+SELECT * FROM users_user;
+
 .exit
