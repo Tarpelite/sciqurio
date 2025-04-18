@@ -78,6 +78,20 @@ exitBtn.addEventListener('click', function() {
     showPage('home-page');
 });
 
+// 下一题按钮
+nextQuestionBtn.addEventListener('click', function() {
+    // Reset the input fields and selections
+    document.getElementById('hypothesis-input').value = '';
+    document.getElementById('reason-input').value = '';
+    hypothesisCards.forEach(card => card.classList.remove('selected'));
+
+    // Load a new random video
+    loadRandomVideo();
+
+    // Navigate back to the first annotation page
+    showPage('label-page-1');
+});
+
 // 响应式视频处理
 function handleVideoResize() {
     const videoContainers = document.querySelectorAll('.video-player');
