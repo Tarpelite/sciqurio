@@ -22,6 +22,7 @@ import '@/markdown.css'
 // import './global-reset.css';
 import AppHeader from '@/components/AppHeader';
 import AppFooter from '@/components/AppFooter';
+import { API_URL } from '@/config';
 const { Content, Footer } = Layout;
 const { Title, Text } = Typography;
 
@@ -104,7 +105,7 @@ export default function Home() {
   useEffect(() => {
     const fetchLeaderboardData = async () => {
       try {
-        const response = await axios.get('http://192.168.137.1:8000/api/leaderboard');
+        const response = await axios.get(`${API_URL}/api/leaderboard`);
         // 假设API返回的数据格式为数组，包含username和points字段
         const formattedData = response.data.map((item, index) => ({
           key: index.toString(),
@@ -177,8 +178,6 @@ export default function Home() {
   return (
     <Layout style={{ minHeight: '100vh', width: '100%' }}>
       <AppHeader />
-      {/* 添加header占位元素 */}
-      <div style={{ height: '64px' }}></div>
       
       <Content style={{ width: '100%', background: '#f0f2f5' }}>
         <div style={{ 

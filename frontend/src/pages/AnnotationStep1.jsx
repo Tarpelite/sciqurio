@@ -14,9 +14,11 @@ import {
   theme
 } from 'antd';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios'; // Add axios import
 import VideoPlayer from '@/components/VideoPlayer';
 import AppHeader from '@/components/AppHeader';
 import AppFooter from '@/components/AppFooter';
+import { API_URL } from '@/config';
 
 const { Content, Footer } = Layout;
 const { Title, Text, Paragraph } = Typography;
@@ -40,7 +42,7 @@ const AnnotationStep1 = () => {
   useEffect(() => {
     const fetchVideoInfo = async () => {
       try {
-        const response = await fetch('http://192.168.137.1:8000/api/random_video');
+        const response = await fetch(`${API_URL}/api/random_video`);
         if (!response.ok) {
           throw new Error('Failed to fetch video data');
         }
@@ -50,7 +52,7 @@ const AnnotationStep1 = () => {
         localStorage.setItem('current_video_id', data.video_id);
         
         setVideoInfo({
-          src: 'http://192.168.137.1:8000/'+ data.storage_path,
+          src: `${API_URL}/${data.storage_path}`,
           title: data.dataset,
           description: data.description,
           video_id: data.video_id
@@ -84,17 +86,62 @@ const AnnotationStep1 = () => {
       const values = await form.validateFields();
       setLoading(true);
       
-      // 模拟API请求
-      setTimeout(() => {
+      // Get user info from localStorage
+      const userInfoString = localStorage.getItem('user_info');
+      let userInfo = {};
+      
+      try {
+        if (userInfoString) {
+          userInfo = JSON.parse(userInfoString);
+        } else {
+          message.warning('用户信息不存在，请重新登录');
+          setLoading(false);
+          return;
+        }
+      } catch (err) {
+        console.error('解析用户信息失败:', err);
+        message.error('获取用户信息失败');
         setLoading(false);
-        // 将假设传递到下一页
-        navigate('/annotation/step2', { 
-          state: { 
-            userHypothesis: values.hypothesis,
-            videoId: videoInfo.video_id // Pass video_id to next page
-          } 
-        });
-      }, 1000);
+        return;
+      }
+      
+      // Prepare data for API submission
+      const submissionData = {
+        video_id: videoInfo.video_id,
+        name: userInfo.name,
+        email: userInfo.email,
+        content: values.hypothesis,
+        student_id: userInfo.customData.student_id
+      };
+      
+      try {
+        // Submit hypothesis to backend
+        const response = await axios.post(`${API_URL}/api/propositions`, submissionData);
+        
+        if (response.status === 200 || response.status === 201) {
+          message.success('假设提交成功');
+          
+          // Navigate to next step with complete video information
+          navigate('/annotation/step2', { 
+            state: { 
+              userHypothesis: values.hypothesis,
+              videoId: videoInfo.video_id,
+              videoInfo: {
+                src: videoInfo.src,
+                title: videoInfo.title,
+                description: videoInfo.description
+              }
+            } 
+          });
+        } else {
+          throw new Error('提交失败，请重试');
+        }
+      } catch (error) {
+        console.error('提交假设失败:', error);
+        message.error('提交假设失败，请重试');
+      } finally {
+        setLoading(false);
+      }
     } catch (error) {
       console.error('表单验证失败:', error);
     }

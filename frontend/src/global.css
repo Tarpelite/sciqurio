@@ -1,0 +1,30 @@
+/* 全局样式重置和布局修复 */
+
+/* 重置基础样式 */
+body {
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+  box-sizing: border-box;
+}
+
+/* 确保所有元素的盒模型一致 */
+* {
+  box-sizing: inherit;
+}
+
+/* 修复视频加载导致的布局偏移问题 */
+.ant-card-body {
+  transition: height 0.3s ease;
+}
+
+/* 确保内容始终在固定头部下方 */
+.site-layout-content {
+  padding-top: 16px;
+}
+
+/* 确保页面容器始终占满可用空间 */
+#root {
+  min-height: 100vh;
+  width: 100%;
+}

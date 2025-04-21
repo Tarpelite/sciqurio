@@ -8,13 +8,13 @@ import asyncio
 from datetime import datetime
 
 # MongoDB connection
-MONGO_URI = "mongodb://localhost:27017"
+MONGO_URI = os.environ.get('MONGO_URI', 'mongodb://localhost:27017')
+MONGO_DB = os.environ.get('MONGO_DB', 'sciqurio_db')
 client = AsyncIOMotorClient(MONGO_URI)
-db = client.sciqurio_db
+db = client[MONGO_DB]
 
 # Base directory containing datasets
-# TODO: Change this to the actual path where your datasets are stored
-BASE_DIR = "backend/media/videos/"
+BASE_DIR = os.environ.get('MEDIA_DIR', "media/videos/")
 
 
 async def upload_videos():
@@ -63,10 +63,9 @@ async def upload_videos():
                 print(f"Inserted video: {filename} from dataset: {dataset_name}, ID: {result.inserted_id}")
 
 
-# MongoDB connection
-MONGO_URI = "mongodb://localhost:27017"
+# MongoDB connection (update to use environment variables)
 client = AsyncIOMotorClient(MONGO_URI)
-db = client.sciqurio_db
+db = client[MONGO_DB]
 
 
 async def insert_mock_propositions():
@@ -141,5 +140,8 @@ async def insert_mock_propositions():
 
 
 if __name__ == "__main__":
-    # asyncio.run(upload_videos())
+    print(f"Initializing database at {MONGO_URI}")
+    # Uncomment the appropriate function based on what you need to initialize
+    asyncio.run(upload_videos())
     asyncio.run(insert_mock_propositions())
+    print("Database initialization completed")

@@ -227,11 +227,13 @@ async def add_comparison(comparison: dict):
         "video_id": proposition_a["video_id"],  # Assuming both propositions belong to the same video
         "user_id": comparison['user_id'],  # Replace with actual user ID if available
         "proposition_a": {
+            "id": str(proposition_a["_id"]),
             "source": proposition_a["model_info"]["name"],
             "content": proposition_a["propositions"][0]["content"],
             "type": proposition_a["propositions"][0]["type"]
         },
         "proposition_b": {
+            "id": str(proposition_b["_id"]),
             "source": proposition_b["model_info"]["name"],
             "content": proposition_b["propositions"][0]["content"],
             "type": proposition_b["propositions"][0]["type"]

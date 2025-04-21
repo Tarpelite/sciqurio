@@ -34,6 +34,7 @@ const VideoPlayer = ({
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(1);
   const [showVolumeControl, setShowVolumeControl] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   // 更新播放进度
   useEffect(() => {
@@ -114,18 +115,49 @@ const VideoPlayer = ({
     return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
   };
 
+  // 处理视频加载完成事件
+  const handleLoadedData = () => {
+    setLoading(false);
+  };
+  
+  // 处理视频结束事件
+  const handleVideoEnded = () => {
+    if (onEnded && typeof onEnded === 'function') {
+      onEnded();
+    }
+  };
+
   return (
     <Card 
       bordered={false}
       bodyStyle={{ padding: 0 }}
       className="video-player-container"
+      styles={{
+        header: { padding: '16px 24px' },
+        body: { 
+          padding: '0 0 16px 0',
+          // 视频容器的最小高度，确保在视频加载前就占据足够空间
+          minHeight: '400px' 
+        }
+      }}
     >
-      <div style={{ position: 'relative' }}>
+      <div style={{ 
+        position: 'relative',
+        width: '100%',
+        // 视频容器使用padding-top技术保持纵横比，防止布局偏移
+        paddingTop: '56.25%', // 16:9 纵横比
+        background: '#f0f0f0'
+      }}>
         <video
           ref={videoRef}
           src={src}
           style={{ 
+            position: 'absolute',
+            top: 0,
+            left: 0,
             width: '100%', 
+            height: '100%',
+            objectFit: 'contain',
             backgroundColor: '#000',
             borderRadius: '8px 8px 0 0'
           }}
@@ -133,6 +165,9 @@ const VideoPlayer = ({
           controls={controls}
           onClick={togglePlay}
           playsInline
+          onLoadedData={handleLoadedData}
+          onEnded={handleVideoEnded}
+          preload="auto"
         />
 
         {/* 自定义控制器 */}
