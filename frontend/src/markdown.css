@@ -1,0 +1,91 @@
+/* 科学标注系统专用紧凑样式 */
+.markdown-content {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #333;
+}
+
+/* 标题层级 */
+.markdown-content h1 {
+  font-size: 15px;
+  font-weight: 600;
+  margin: 8px 0 4px;
+  padding-bottom: 2px;
+  border-bottom: 1px solid #eee;
+}
+
+.markdown-content h2 {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 6px 0 4px;
+  color: #2c3e50;
+}
+
+/* 段落与列表优化 */
+.markdown-content p {
+  margin: 4px 0;
+  word-break: break-word;
+}
+
+.markdown-content ul {
+  padding-left: 18px;
+  margin: 4px 0;
+}
+
+.markdown-content li {
+  margin-bottom: 2px;
+  padding-left: 4px;
+}
+
+/* 代码块样式 */
+.markdown-content code {
+  font-family: "SFMono-Regular", Consolas, monospace;
+  background-color: #f6f8fa;
+  padding: 1px 4px;
+  border-radius: 3px;
+  font-size: 12px;
+  border: 1px solid #e1e4e8;
+}
+
+/* 响应式调整 */
+@media (max-width: 768px) {
+  .markdown-content {
+    font-size: 12px;
+  }
+  
+  .markdown-content h1 {
+    font-size: 14px;
+    margin: 6px 0 3px;
+  }
+  
+  .markdown-content h2 {
+    font-size: 13px;
+  }
+  
+  .markdown-content code {
+    font-size: 11px;
+  }
+}
+
+/* 标注系统专用增强样式 */
+.annotation-highlight {
+  background-color: #fffde7;
+  padding: 0 2px;
+  border-radius: 2px;
+}
+
+.task-step {
+  margin-left: 8px;
+  padding-left: 8px;
+  border-left: 2px solid #e0e0e0;
+}
+
+.requirement-badge {
+  display: inline-block;
+  padding: 0 4px;
+  margin: 0 2px;
+  font-size: 11px;
+  border-radius: 3px;
+  background: #f5f5f5;
+}
