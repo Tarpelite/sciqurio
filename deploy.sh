@@ -83,7 +83,7 @@ echo "Building and deploying the frontend..."
 cd ../frontend
 # Update the config.js file if necessary
 sed -i "s|export const API_URL = .*|export const API_URL = '$API_URL';|" src/config.js
-sed -i "s|export const FRONTEND_URL = .*|export const FRONTEND_URL = 'http://localhost:8001';|" src/config.js
+sed -i "s|export const FRONTEND_URL = .*|export const FRONTEND_URL = 'http://localhost:8000';|" src/config.js
 
 # Install dependencies and build the frontend
 npm install
@@ -106,28 +106,21 @@ else
     exit 1
 fi
 
-sudo cp -r dist/* $CUSTOM_NGINX_FOLDER/
+# Check if build directory exists and use it, otherwise try dist
+if [ -d "build" ]; then
+    echo "Found 'build' directory, copying files from there..."
+    sudo cp -r build/* $CUSTOM_NGINX_FOLDER/
+elif [ -d "dist" ]; then
+    echo "Found 'dist' directory, copying files from there..."
+    sudo cp -r dist/* $CUSTOM_NGINX_FOLDER/
+else
+    echo "Error: Neither 'build' nor 'dist' directory found. Build may have failed."
+    exit 1
+fi
 
-# Update Nginx configuration to use the new folder and port 8001
+# Update Nginx configuration to use the new folder and port 8000
 NGINX_CONFIG="/etc/nginx/sites-available/sciqurio"
-sudo bash -c "cat > $NGINX_CONFIG" <<EOL
-server {
-    listen 28001;
-    server_name localhost;
-
-    root /var/www/sciqurio-frontend;
-    index index.html;
-
-    location / {
-        try_files \$uri  \$uri/ /index.html;
-    }
-
-    location /assets/ {
-        root /var/www/sciqurio-frontend;
-        add_header Cache-Control "no-cache, no-store, must-revalidate";
-    }
-}
-EOL
+sudo cp niginx.conf $NGINX_CONFIG
 
 # Enable the new Nginx configuration
 sudo ln -sf $NGINX_CONFIG /etc/nginx/sites-enabled/sciqurio
@@ -145,7 +138,7 @@ docker-compose up -d
 echo -e "${GREEN}Deployment completed!${NC}"
 echo -e "${BLUE}=======================================${NC}"
 echo -e "${GREEN}Services:${NC}"
-echo -e "${YELLOW}Frontend: http://localhost:8001${NC}"
+echo -e "${YELLOW}Frontend: http://localhost:8000${NC}"
 echo -e "${YELLOW}Backend API: http://localhost:$BACKEND_PORT${NC}"
 echo -e "${YELLOW}MongoDB: localhost:$MONGO_PORT${NC}"
 echo -e "${BLUE}=======================================${NC}"
