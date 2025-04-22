@@ -25,7 +25,7 @@ export default function App() {
     >
       <GuardProvider
         appId="68035ccfc5f4309865cede03" // 替换为你的 Authing 应用 ID
-        redirectUri="http://localhost:5173/auth-guard" // 与回调 URL 一致
+        redirectUri="https://sciqurio.authing.cn/login" // 与回调 URL 一致
       >
         <AntApp>
           <BrowserRouter>

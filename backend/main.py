@@ -1,17 +1,21 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends
 from motor.motor_asyncio import AsyncIOMotorClient
 from bson import ObjectId
-from typing import List
+from typing import List, Dict, Any
 from random import sample, choice
 from datetime import datetime
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 import uvicorn
+import os
+
+# Import authentication module
+from auth import get_current_user
 
 app = FastAPI()
 
+# CORS configuration
 origins = ['*']
-
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
@@ -21,9 +25,10 @@ app.add_middleware(
 )
 
 # MongoDB connection
-MONGO_URI = "mongodb://localhost:27017"
+MONGO_URI = os.environ.get("MONGO_URI", "mongodb://localhost:27017")
+MONGO_DB = os.environ.get("MONGO_DB", "sciqurio_db")
 client = AsyncIOMotorClient(MONGO_URI)
-db = client.sciqurio_db
+db = client[MONGO_DB]
 
 # Serve media files
 app.mount("/media", StaticFiles(directory="media"), name="media")
@@ -32,7 +37,7 @@ app.mount("/media", StaticFiles(directory="media"), name="media")
 
 
 @app.get("/api/videos", response_model=List[dict])
-async def get_all_videos():
+async def get_all_videos(user: Dict[str, Any] = Depends(get_current_user)):
     """Fetch all videos from the database."""
     videos = await db.videos.find().to_list(100)
     return [
@@ -49,7 +54,7 @@ async def get_all_videos():
 
 
 @app.get("/api/videos/{video_id}", response_model=dict)
-async def get_video_by_id(video_id: str):
+async def get_video_by_id(video_id: str, user: Dict[str, Any] = Depends(get_current_user)):
     """Fetch a video's path by its ID."""
     video = await db.videos.find_one({"_id": ObjectId(video_id)})
     if not video:
@@ -60,7 +65,7 @@ async def get_video_by_id(video_id: str):
 
 
 @app.post("/api/videos", response_model=dict)
-async def add_video(video: dict):
+async def add_video(video: dict, user: Dict[str, Any] = Depends(get_current_user)):
     """Add a new video to the database."""
     result = await db.videos.insert_one(video)
     return {"id": str(result.inserted_id)}
@@ -69,13 +74,39 @@ async def add_video(video: dict):
 
 
 @app.get("/api/random_video", response_model=dict)
-async def get_random_video():
-    """Fetch a random video's information."""
-    videos = await db.videos.find().to_list(100)
-    if not videos:
-        raise HTTPException(status_code=404, detail="No videos found")
+async def get_random_video(user: Dict[str, Any] = Depends(get_current_user)):
+    """Fetch a random video's information, but only if it has at least 2 associated propositions."""
 
-    random_video = choice(videos)
+    # First, get all videos that have at least 2 propositions
+    # Using aggregation to count propositions per video
+    pipeline = [
+        {"$group": {
+            "_id": "$video_id",
+            "count": {"$sum": 1}
+        }},
+        {"$match": {
+            "count": {"$gte": 2}
+        }}
+    ]
+
+    # Execute the aggregation to get videos with enough propositions
+    videos_with_propositions = await db.propositions.aggregate(pipeline).to_list(1000)
+
+    if not videos_with_propositions:
+        raise HTTPException(status_code=404, detail="No videos with at least 2 propositions found")
+
+    # Extract the video IDs
+    video_ids = [ObjectId(doc["_id"]) for doc in videos_with_propositions]
+
+    # Query the videos collection to get the actual video documents
+    eligible_videos = await db.videos.find({"_id": {"$in": video_ids}}).to_list(1000)
+
+    if not eligible_videos:
+        raise HTTPException(status_code=404, detail="No eligible videos found")
+
+    # Choose a random video from the list
+    random_video = choice(eligible_videos)
+
     return {
         "video_id": str(random_video["_id"]),
         "storage_path": random_video["storage_path"],
@@ -87,7 +118,7 @@ async def get_random_video():
 
 
 @app.get("/api/propositions/user", response_model=List[dict])
-async def get_user_propositions(name: str, student_id: str):
+async def get_user_propositions(name: str, student_id: str, user: Dict[str, Any] = Depends(get_current_user)):
     """Fetch all propositions added by a user."""
     propositions = await db.propositions.find({"human_info.name": name, "human_info.student_id": student_id}).to_list(100)
     if not propositions:
@@ -106,7 +137,7 @@ async def get_user_propositions(name: str, student_id: str):
 
 
 @app.get("/api/propositions/all", response_model=List[dict])
-async def get_all_propositions():
+async def get_all_propositions(user: Dict[str, Any] = Depends(get_current_user)):
     """Fetch all propositions from the database."""
     propositions = await db.propositions.find().to_list(100)
     if not propositions:
@@ -125,7 +156,7 @@ async def get_all_propositions():
 
 
 @app.get("/api/propositions/{video_id}", response_model=List[dict])
-async def get_propositions_by_video_id(video_id: str):
+async def get_propositions_by_video_id(video_id: str, user: Dict[str, Any] = Depends(get_current_user)):
     """Fetch all propositions for a given video ID and return any two."""
     propositions = await db.propositions.find({"video_id": ObjectId(video_id)}).to_list(100)
     if not propositions or len(propositions) < 2:
@@ -146,7 +177,7 @@ async def get_propositions_by_video_id(video_id: str):
 
 
 @app.post("/api/propositions", response_model=dict)
-async def add_proposition(proposition: dict):
+async def add_proposition(proposition: dict, user: Dict[str, Any] = Depends(get_current_user)):
     """Add a new proposition to the database."""
     # Validate input
     required_fields = ["video_id", "name", "email", "content", "student_id"]
@@ -186,7 +217,7 @@ async def add_proposition(proposition: dict):
 
 
 @app.get("/api/comparisons/{video_id}", response_model=List[dict])
-async def get_comparisons_by_video_id(video_id: str):
+async def get_comparisons_by_video_id(video_id: str, user: Dict[str, Any] = Depends(get_current_user)):
     """Fetch all comparisons for a given video ID."""
     comparisons = await db.comparisons.find({"video_id": ObjectId(video_id)}).to_list(100)
     if not comparisons:
@@ -207,7 +238,7 @@ async def get_comparisons_by_video_id(video_id: str):
 
 
 @app.post("/api/comparison", response_model=dict)
-async def add_comparison(comparison: dict):
+async def add_comparison(comparison: dict, user: Dict[str, Any] = Depends(get_current_user)):
     """Add a new comparison to the database."""
     # Validate input
     required_fields = ["proposition_id1", "prososition_id2", "chosen", "reason"]
@@ -225,7 +256,7 @@ async def add_comparison(comparison: dict):
     # Construct the comparison document
     comparison_document = {
         "video_id": proposition_a["video_id"],  # Assuming both propositions belong to the same video
-        "user_id": comparison['user_id'],  # Replace with actual user ID if available
+        "user_id": comparison.get('user_id', str(user.get("id", ""))),  # Get user ID from authenticated user if not provided
         "proposition_a": {
             "id": str(proposition_a["_id"]),
             "source": proposition_a["model_info"]["name"],
@@ -253,7 +284,7 @@ async def add_comparison(comparison: dict):
 
 
 @app.get("/api/comparison/{comparison_id}", response_model=dict)
-async def get_comparison_by_id(comparison_id: str):
+async def get_comparison_by_id(comparison_id: str, user: Dict[str, Any] = Depends(get_current_user)):
     """Fetch comparison details by its ID."""
     comparison = await db.comparisons.find_one({"_id": ObjectId(comparison_id)})
     if not comparison:
@@ -273,7 +304,7 @@ async def get_comparison_by_id(comparison_id: str):
 
 
 @app.get("/api/leaderboard", response_model=List[dict])
-async def get_leaderboard():
+async def get_leaderboard(user: Dict[str, Any] = Depends(get_current_user)):
     """Get the leaderboard of users with the most propositions."""
     pipeline = [
         {"$group": {
@@ -293,6 +324,14 @@ async def get_leaderboard():
         }
         for index, entry in enumerate(leaderboard)
     ]
+
+# Create a public health endpoint for checking API status without authentication
+
+
+@app.get("/api/health")
+async def health_check():
+    """Public endpoint to check if the API is running."""
+    return {"status": "ok", "timestamp": datetime.utcnow().isoformat()}
 
 if __name__ == '__main__':
     uvicorn.run(app=app, host='0.0.0.0', port=8000, log_level="info")

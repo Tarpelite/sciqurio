@@ -129,8 +129,8 @@ const VideoPlayer = ({
 
   return (
     <Card 
-      bordered={false}
-      bodyStyle={{ padding: 0 }}
+      variant="bordered" // Updated to use variant instead of bordered
+      
       className="video-player-container"
       styles={{
         header: { padding: '16px 24px' },
@@ -190,7 +190,7 @@ const VideoPlayer = ({
               value={currentTime} 
               max={duration || 100} 
               onChange={handleProgressChange} 
-              tooltipVisible={false}
+              tooltip={{ open: false }} // Updated to use tooltip.open instead of tooltipVisible
               style={{ margin: '0 0 8px 0' }}
             />
             

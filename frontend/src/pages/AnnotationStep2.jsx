@@ -13,14 +13,14 @@ import {
   Radio,
   message,
   theme,
-  Alert
+  App // Import App component
 } from 'antd';
 import { useNavigate, useLocation } from 'react-router-dom';
-import axios from 'axios'; // Add axios import
 import VideoPlayer from '@/components/VideoPlayer';
 import AppHeader from '@/components/AppHeader';
 import AppFooter from '@/components/AppFooter';
 import { API_URL } from '@/config'; // Import API_URL
+import { api } from '../utils/api';
 
 const { Content, Footer } = Layout;
 const { Title, Text, Paragraph } = Typography;
@@ -78,7 +78,7 @@ const AnnotationStep2 = () => {
       setPropositionsLoading(true);
       
       try {
-        const response = await axios.get(`${API_URL}/api/propositions/${videoId}`);
+        const response = await api.get(`${API_URL}/api/propositions/${videoId}`);
         
         if (response.data && response.data.length >= 2) {
           // Use the first two propositions from the API response
@@ -171,7 +171,7 @@ const AnnotationStep2 = () => {
       
       try {
         // Submit comparison to backend
-        const response = await axios.post(`${API_URL}/api/comparison`, comparisonData);
+        const response = await api.post(`${API_URL}/api/comparison`, comparisonData);
         
         if (response.status === 200 || response.status === 201) {
           message.success('比较提交成功');
@@ -204,145 +204,147 @@ const AnnotationStep2 = () => {
   };
 
   return (
-    <Layout style={{ minHeight: '100vh', width: '100%' }}>
-      <AppHeader />
-      
-      <Content style={{ width: '100%', background: '#f0f2f5' }}>
-        <div style={{ 
-          padding: '16px 24px',
-          width: '100%',
-          maxWidth: '1200px',
-          margin: '0 auto'
-        }}>
-          {/* 步骤指示器 */}
-          <Card 
-            variant="bordered" 
-            style={{ marginBottom: '24px' }}
-            bodyStyle={{ padding: '24px' }}
-          >
-            <Steps
-              current={1}
-              items={[
-                {
-                  title: '提出假设',
-                  description: '观看视频，提出您的科学假设',
-                },
-                {
-                  title: '选择和论证',
-                  description: '从给定选项中选择并论证',
-                },
-                {
-                  title: '完成',
-                  description: '提交您的标注结果',
-                },
-              ]}
-            />
-          </Card>
-
-          <Row gutter={[24, 24]}>
-            {/* 左侧 - 视频播放器 */}
-            <Col xs={24} md={14}>
-              <VideoPlayer
-                src={videoInfo.src}
-                title={videoInfo.title}
-                description={videoInfo.description}
+    <App> {/* Wrap the entire component in App */}
+      <Layout style={{ minHeight: '100vh', width: '100%' }}>
+        <AppHeader />
+        
+        <Content style={{ width: '100%', background: '#f0f2f5' }}>
+          <div style={{ 
+            padding: '16px 24px',
+            width: '100%',
+            maxWidth: '1200px',
+            margin: '0 auto'
+          }}>
+            {/* 步骤指示器 */}
+            <Card 
+              variant="bordered" 
+              style={{ marginBottom: '24px' }}
+              styles={{ body: { padding: '24px' } }} // Replace bodyStyle with styles.body
+            >
+              <Steps
+                current={1}
+                items={[
+                  {
+                    title: '提出假设',
+                    description: '观看视频，提出您的科学假设',
+                  },
+                  {
+                    title: '选择和论证',
+                    description: '从给定选项中选择并论证',
+                  },
+                  {
+                    title: '完成',
+                    description: '提交您的标注结果',
+                  },
+                ]}
               />
-              
-            </Col>
-            
-            {/* 右侧 - 假设选择和理由输入 */}
-            <Col xs={24} md={10}>
-              <Card
-                title="选择最合适的假设"
-                variant="bordered"
-                styles={{
-                  header: { padding: '16px 24px' },
-                  body: { padding: '16px 24px' }
-                }}
-                loading={propositionsLoading}
-              >
-                <Form 
-                  form={form}
-                  layout="vertical"
-                  requiredMark={false}
-                >
-                  <Form.Item
-                    name="hypothesis"
-                    label="请选择一个的假设"
-                    rules={[{ required: true, message: '请选择一个假设' }]}
-                  >
-                    <Radio.Group 
-                      onChange={(e) => setSelectedHypothesis(e.target.value)}
-                      style={{ width: '100%' }}
-                    >
-                      <Space direction="vertical" style={{ width: '100%' }}>
-                        {hypothesisOptions.map(option => (
-                          <Radio 
-                            key={option.value} 
-                            value={option.value}
-                            style={{ 
-                              width: '100%',
-                              display: 'flex',
-                              alignItems: 'flex-start',
-                              marginBottom: '8px'
-                            }}
-                          >
-                            <div>
-                              <Text strong>{option.label}</Text>: {option.content}
-                            </div>
-                          </Radio>
-                        ))}
-                      </Space>
-                    </Radio.Group>
-                  </Form.Item>
-                  
-                  <Form.Item
-                    name="reason"
-                    label="请说明您选择该假设的理由"
-                    rules={[
-                      { required: true, message: '请输入您的选择理由' },
-                      { min: 20, message: '理由至少需要20个字符' }
-                    ]}
-                  >
-                    <TextArea
-                      placeholder="请详细说明您为什么选择该假设..."
-                      autoSize={{ minRows: 4, maxRows: 8 }}
-                      maxLength={1000}
-                      showCount
-                      onChange={(e) => setReason(e.target.value)}
-                    />
-                  </Form.Item>
-                  
-                  <Form.Item>
-                    <Space style={{ width: '100%', justifyContent: 'space-between' }}>
-                      <Button 
-                        size="large" 
-                        onClick={handlePrevStep}
-                        style={{ width: '100%' }}
-                      >
-                        返回上一步
-                      </Button>
-                      <Button
-                        type="primary"
-                        size="large"
-                        onClick={handleSubmit}
-                        loading={loading}
-                        disabled={!selectedHypothesis || !reason.trim()}
-                        style={{ width: '100%' }}
-                      >
-                        确认提交
-                      </Button>
-                    </Space>
-                  </Form.Item>
-                </Form>
-              </Card>
-            </Col>
-          </Row>
-        </div>
-      </Content>
+            </Card>
 
-      <AppFooter />
-    </Layout>
+            <Row gutter={[24, 24]}>
+              {/* 左侧 - 视频播放器 */}
+              <Col xs={24} md={14}>
+                <VideoPlayer
+                  src={videoInfo.src}
+                  title={videoInfo.title}
+                  description={videoInfo.description}
+                />
+                
+              </Col>
+              
+              {/* 右侧 - 假设选择和理由输入 */}
+              <Col xs={24} md={10}>
+                <Card
+                  title="选择最合适的假设"
+                  variant="bordered"
+                  styles={{
+                    header: { padding: '16px 24px' },
+                    body: { padding: '16px 24px' }
+                  }}
+                  loading={propositionsLoading}
+                >
+                  <Form 
+                    form={form}
+                    layout="vertical"
+                    requiredMark={false}
+                  >
+                    <Form.Item
+                      name="hypothesis"
+                      label="请选择一个的假设"
+                      rules={[{ required: true, message: '请选择一个假设' }]}
+                    >
+                      <Radio.Group 
+                        onChange={(e) => setSelectedHypothesis(e.target.value)}
+                        style={{ width: '100%' }}
+                      >
+                        <Space direction="vertical" style={{ width: '100%' }}>
+                          {hypothesisOptions.map(option => (
+                            <Radio 
+                              key={option.value} 
+                              value={option.value}
+                              style={{ 
+                                width: '100%',
+                                display: 'flex',
+                                alignItems: 'flex-start',
+                                marginBottom: '8px'
+                              }}
+                            >
+                              <div>
+                                <Text strong>{option.label}</Text>: {option.content}
+                              </div>
+                            </Radio>
+                          ))}
+                        </Space>
+                      </Radio.Group>
+                    </Form.Item>
+                    
+                    <Form.Item
+                      name="reason"
+                      label="请说明您选择该假设的理由"
+                      rules={[
+                        { required: true, message: '请输入您的选择理由' },
+                        { min: 20, message: '理由至少需要20个字符' }
+                      ]}
+                    >
+                      <TextArea
+                        placeholder="请详细说明您为什么选择该假设..."
+                        autoSize={{ minRows: 4, maxRows: 8 }}
+                        maxLength={1000}
+                        showCount
+                        onChange={(e) => setReason(e.target.value)}
+                      />
+                    </Form.Item>
+                    
+                    <Form.Item>
+                      <Space style={{ width: '100%', justifyContent: 'space-between' }}>
+                        <Button 
+                          size="large" 
+                          onClick={handlePrevStep}
+                          style={{ width: '100%' }}
+                        >
+                          返回上一步
+                        </Button>
+                        <Button
+                          type="primary"
+                          size="large"
+                          onClick={handleSubmit}
+                          loading={loading}
+                          disabled={!selectedHypothesis || !reason.trim()}
+                          style={{ width: '100%' }}
+                        >
+                          确认提交
+                        </Button>
+                      </Space>
+                    </Form.Item>
+                  </Form>
+                </Card>
+              </Col>
+            </Row>
+          </div>
+        </Content>
+
+        <AppFooter />
+      </Layout>
+    </App>
   );
 };
 

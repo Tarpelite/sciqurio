@@ -14,7 +14,6 @@ export default function AuthGuard() {
         const userInfo = await guard.trackSession();
         
         if (userInfo) {
-          console.log('用户信息:', userInfo);
           // 存储用户信息到本地
           localStorage.setItem('user_info', JSON.stringify(userInfo));
           // 跳转到首页
@@ -22,7 +21,6 @@ export default function AuthGuard() {
         } else {
           // 如果没有用户信息，启动 Guard 登录
           guard.start('#authing-guard-container').then((userInfo) => { // 移除了 : User 类型注解
-            console.log('登录成功，用户信息:', userInfo);
             localStorage.setItem('user_info', JSON.stringify(userInfo));
             navigate('/home');
           }).catch((err) => {

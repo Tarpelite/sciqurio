@@ -11,14 +11,15 @@ import {
   Space,
   Form,
   message,
-  theme
+  theme,
+  App
 } from 'antd';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios'; // Add axios import
 import VideoPlayer from '@/components/VideoPlayer';
 import AppHeader from '@/components/AppHeader';
 import AppFooter from '@/components/AppFooter';
 import { API_URL } from '@/config';
+import { api } from '../utils/api';
 
 const { Content, Footer } = Layout;
 const { Title, Text, Paragraph } = Typography;
@@ -42,20 +43,20 @@ const AnnotationStep1 = () => {
   useEffect(() => {
     const fetchVideoInfo = async () => {
       try {
-        const response = await fetch(`${API_URL}/api/random_video`);
-        if (!response.ok) {
+        const response = await api.get(`${API_URL}/api/random_video`);
+        
+        if (response.status !== 200) {
           throw new Error('Failed to fetch video data');
         }
-        const data = await response.json();
         
         // Store video_id in localStorage for persistence
-        localStorage.setItem('current_video_id', data.video_id);
+        localStorage.setItem('current_video_id', response.data.video_id);
         
         setVideoInfo({
-          src: `${API_URL}/${data.storage_path}`,
-          title: data.dataset,
-          description: data.description,
-          video_id: data.video_id
+          src: `${API_URL}/${response.data.storage_path}`,
+          title: response.data.dataset,
+          description: response.data.description,
+          video_id: response.data.video_id
         });
       } catch (error) {
         console.error('Error fetching video data:', error);
@@ -116,7 +117,7 @@ const AnnotationStep1 = () => {
       
       try {
         // Submit hypothesis to backend
-        const response = await axios.post(`${API_URL}/api/propositions`, submissionData);
+        const response = await api.post(`${API_URL}/api/propositions`, submissionData);
         
         if (response.status === 200 || response.status === 201) {
           message.success('假设提交成功');
@@ -148,119 +149,120 @@ const AnnotationStep1 = () => {
   };
 
   return (
-    <Layout style={{ minHeight: '100vh', width: '100%' }}>
-      <AppHeader />
-      
-      <Content style={{ width: '100%', background: '#f0f2f5' }}>
-        <div style={{ 
-          padding: '16px 24px',
-          width: '100%',
-          maxWidth: '1200px',
-          margin: '0 auto'
-        }}>
-          {/* 步骤指示器 */}
-          <Card 
-            variant="bordered" 
-            style={{ marginBottom: '24px' }}
-            bodyStyle={{ padding: '24px' }}
-          >
-            <Steps
-              current={0}
-              items={[
-                {
-                  title: '提出假设',
-                  description: '观看视频，提出您的科学假设',
-                },
-                {
-                  title: '选择和论证',
-                  description: '从给定选项中选择并论证',
-                },
-                {
-                  title: '完成',
-                  description: '提交您的标注结果',
-                },
-              ]}
-            />
-          </Card>
+    <App> {/* Wrap the entire component in App */}
+      <Layout style={{ minHeight: '100vh', width: '100%' }}>
+        <AppHeader />
+        
+        <Content style={{ width: '100%', background: '#f0f2f5' }}>
+          <div style={{ 
+            padding: '16px 24px',
+            width: '100%',
+            maxWidth: '1200px',
+            margin: '0 auto'
+          }}>
+            {/* 步骤指示器 */}
+            <Card 
+              variant="bordered" 
+              style={{ marginBottom: '24px', bodyStyle: { padding: 0 } }}
+            >
+              <Steps
+                current={0}
+                items={[
+                  {
+                    title: '提出假设',
+                    description: '观看视频，提出您的科学假设',
+                  },
+                  {
+                    title: '选择和论证',
+                    description: '从给定选项中选择并论证',
+                  },
+                  {
+                    title: '完成',
+                    description: '提交您的标注结果',
+                  },
+                ]}
+              />
+            </Card>
 
-          <Row gutter={[24, 24]}>
-            {/* 左侧 - 视频播放器 */}
-            <Col xs={24} md={14}>
-              {videoLoading ? (
-                <Card loading={true} />
-              ) : (
-                <VideoPlayer
-                  src={videoInfo.src}
-                  title={videoInfo.title}
-                  description={videoInfo.description}
-                  onEnded={handleVideoEnded}
-                />
-              )}
-            </Col>
-            
-            {/* 右侧 - 假设输入 */}
-            <Col xs={24} md={10}>
-              <Card
-                title="输入您的科学假设"
-                variant="bordered"
-                styles={{
-                  header: { padding: '16px 24px' },
-                  body: { padding: '16px 24px' }
-                }}
-              >
-                <Paragraph>
-                  请根据视频内容，提出您认为的主要科学假设。一个好的科学假设应该是具体的、可验证的，并且与视频中的内容相关。
-                </Paragraph>
-                
-                <Form 
-                  form={form}
-                  layout="vertical"
-                  requiredMark={false}
+            <Row gutter={[24, 24]}>
+              {/* 左侧 - 视频播放器 */}
+              <Col xs={24} md={14}>
+                {videoLoading ? (
+                  <Card loading={true} />
+                ) : (
+                  <VideoPlayer
+                    src={videoInfo.src}
+                    title={videoInfo.title}
+                    description={videoInfo.description}
+                    onEnded={handleVideoEnded}
+                  />
+                )}
+              </Col>
+              
+              {/* 右侧 - 假设输入 */}
+              <Col xs={24} md={10}>
+                <Card
+                  title="输入您的科学假设"
+                  variant="bordered"
+                  styles={{
+                    header: { padding: '16px 24px' },
+                    body: { padding: '16px 24px' } // Updated to use styles.body
+                  }}
                 >
-                  <Form.Item
-                    name="hypothesis"
-                    label="您的假设"
-                    rules={[
-                      { 
-                        required: true, 
-                        message: '请输入您的科学假设' 
-                      },
-                      {
-                        min: 10,
-                        message: '假设至少需要10个字符'
-                      }
-                    ]}
-                  >
-                    <TextArea
-                      placeholder="请输入您的科学假设..."
-                      autoSize={{ minRows: 4, maxRows: 8 }}
-                      maxLength={500}
-                      showCount
-                      onChange={(e) => setHypothesis(e.target.value)}
-                    />
-                  </Form.Item>
+                  <Paragraph>
+                    请根据视频内容，提出您认为的主要科学假设。一个好的科学假设应该是具体的、可验证的，并且与视频中的内容相关。
+                  </Paragraph>
                   
-                  <Form.Item>
-                    <Button
-                      type="primary"
-                      size="large"
-                      onClick={handleNextStep}
-                      loading={loading}
-                      disabled={!hypothesis.trim() || videoLoading}
-                      style={{ width: '100%' }}
+                  <Form 
+                    form={form}
+                    layout="vertical"
+                    requiredMark={false}
+                  >
+                    <Form.Item
+                      name="hypothesis"
+                      label="您的假设"
+                      rules={[
+                        { 
+                          required: true, 
+                          message: '请输入您的科学假设' 
+                        },
+                        {
+                          min: 10,
+                          message: '假设至少需要10个字符'
+                        }
+                      ]}
                     >
-                      下一步
-                    </Button>
-                  </Form.Item>
-                </Form>
-              </Card>
-            </Col>
-          </Row>
-        </div>
-      </Content>
+                      <TextArea
+                        placeholder="请输入您的科学假设..."
+                        autoSize={{ minRows: 4, maxRows: 8 }}
+                        maxLength={500}
+                        showCount
+                        onChange={(e) => setHypothesis(e.target.value)}
+                      />
+                    </Form.Item>
+                    
+                    <Form.Item>
+                      <Button
+                        type="primary"
+                        size="large"
+                        onClick={handleNextStep}
+                        loading={loading}
+                        disabled={!hypothesis.trim() || videoLoading}
+                        style={{ width: '100%' }}
+                      >
+                        下一步
+                      </Button>
+                    </Form.Item>
+                  </Form>
+                </Card>
+              </Col>
+            </Row>
+          </div>
+        </Content>
 
-      <AppFooter />
-    </Layout>
+        <AppFooter />
+      </Layout>
+    </App>
   );
 };
 

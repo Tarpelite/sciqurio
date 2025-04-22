@@ -12,17 +12,20 @@ import {
   Col,
   theme,
   Spin,
-  message
+  message,
+  App  // Import App component for message context
 } from 'antd';
 import { useNavigate } from 'react-router-dom'; // 添加这行
 import ReactMarkdown from 'react-markdown';
-import axios from 'axios';
 import '@/markdown.css'
+import { useGuard } from '@authing/guard-react'; // Import useGuard
 // 布局重置样式
 // import './global-reset.css';
 import AppHeader from '@/components/AppHeader';
 import AppFooter from '@/components/AppFooter';
 import { API_URL } from '@/config';
+import { api } from '../utils/api';
+import { FRONTEND_URL } from '../config';
 const { Content, Footer } = Layout;
 const { Title, Text } = Typography;
 
@@ -101,37 +104,77 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const navigate = useNavigate(); // 添加这行
+  const [messageApi, contextHolder] = message.useMessage(); // Use message hook instead of static method
+  const guard = useGuard(); // Initialize Authing Guard
   
   useEffect(() => {
     const fetchLeaderboardData = async () => {
       try {
-        const response = await axios.get(`${API_URL}/api/leaderboard`);
-        // 假设API返回的数据格式为数组，包含username和points字段
-        const formattedData = response.data.map((item, index) => ({
-          key: index.toString(),
-          rank: index + 1,
-          username: item.username,
-          points: item.points
-        }));
-        setLeaderboardData(formattedData);
+        const response = await api.get(`${API_URL}/api/leaderboard`);
+        
+        // Access response.data correctly to get the actual data returned by the API
+        const data = response.data;
+        
+        // Check if data exists and is an array
+        if (data && Array.isArray(data)) {
+          // If the API already returns formatted data with rank/key/username/points, use it directly
+          setLeaderboardData(data);
+        } else {
+          // If you still need to format the data, do it here
+          // This is now a fallback since the API appears to return properly formatted data
+          const formattedData = data.map((item, index) => ({
+            key: (index + 1).toString(),
+            rank: index + 1,
+            username: item.username,
+            points: item.points
+          }));
+          setLeaderboardData(formattedData);
+        }
         setLoading(false);
       } catch (err) {
         console.error('获取排行榜数据失败:', err);
         setError(err);
         setLoading(false);
-        message.error('获取排行榜数据失败，请稍后重试');
+        
+        // Show more specific error messages based on error type
+        if (err.status) {
+          // Custom error object from our API utility
+          messageApi.error(`获取排行榜数据失败: ${err.message}`);
+        } else {
+          // Generic error handling
+          messageApi.error('获取排行榜数据失败，请稍后重试');
+        }
       }
     };
     fetchLeaderboardData();
-  }, []);
+  }, [messageApi]);
 
   // 处理开始标注按钮点击
   const handleStartAnnotation = () => {
     navigate('/annotation/step1'); // 导航到标注第一步
   };
   // 处理退出系统按钮点击
-  const handleLogout = () => {
-    window.location.href = 'https://sciqurio.authing.cn'; // 跳转到Authing登录页
+  const handleLogout = async () => {
+    try {
+      // Clear localStorage, sessionStorage, and cookies
+      localStorage.clear();
+      sessionStorage.clear();
+      document.cookie.split(';').forEach((c) => {
+        document.cookie = c.replace(/^ +/, '').replace(/=.*/, `=;expires=${new Date().toUTCString()};path=/`);
+      });
+
+      // Call Authing logout
+      await guard.logout();
+
+      // Notify the user
+      messageApi.success('已成功退出登录');
+
+      // Redirect to Authing login page
+      window.location.href = FRONTEND_URL + '/auth-guard'; // Redirect to Authing login page
+    } catch (error) {
+      console.error('Logout failed:', error);
+      messageApi.error('退出登录失败，请稍后重试');
+    }
   };
 
   // 列配置
@@ -176,82 +219,85 @@ export default function Home() {
     },
   ];
   return (
-    <Layout style={{ minHeight: '100vh', width: '100%' }}>
-      <AppHeader />
-      
-      <Content style={{ width: '100%', background: '#f0f2f5' }}>
-        <div style={{ 
-          padding: '16px 24px',  // 减小内边距
-          width: '100%', 
-          background: '#f0f2f5',
-          paddingTop: '16px' // 添加顶部内边距
-        }}>
-          {/* 使用Grid系统布局 */}
-          <Row gutter={[24, 24]} style={{ width: '100%', margin: 0 }}>
-            {/* 主内容区 - 排行榜表格 */}
-            <Col xs={24} md={8}>
-              <Card 
-                title="标注排行榜" 
-                variant="bordered"
-                styles={{
-                  header: { padding: '16px 24px' },
-                  body: { padding: 0 }
-                }}
-              >
-                {loading ? (
-                  <div style={{ textAlign: 'center', padding: '24px' }}>
-                    <Spin tip="加载排行榜数据中..." />
+    <App> {/* Wrap everything in App component to provide message context */}
+      {contextHolder} {/* Include the message context holder */}
+      <Layout style={{ minHeight: '100vh', width: '100%' }}>
+        <AppHeader />
+        
+        <Content style={{ width: '100%', background: '#f0f2f5' }}>
+          <div style={{ 
+            padding: '16px 24px',  // 减小内边距
+            width: '100%', 
+            background: '#f0f2f5',
+            paddingTop: '16px' // 添加顶部内边距
+          }}>
+            {/* 使用Grid系统布局 */}
+            <Row gutter={[24, 24]} style={{ width: '100%', margin: 0 }}>
+              {/* 主内容区 - 排行榜表格 */}
+              <Col xs={24} md={8}>
+                <Card 
+                  title="标注排行榜" 
+                  variant="bordered"
+                  styles={{
+                    header: { padding: '16px 24px' },
+                    body: { padding: 0 }
+                  }}
+                >
+                  {loading ? (
+                    <div style={{ textAlign: 'center', padding: '24px' }}>
+                      <Spin tip="加载排行榜数据中..." />
+                    </div>
+                  ) : error ? (
+                    <div style={{ textAlign: 'center', padding: '24px' }}>
+                      <Text type="danger">加载排行榜数据失败</Text>
+                    </div>
+                  ) : (
+                    <Table
+                      columns={columns}
+                      dataSource={leaderboardData}
+                      pagination={false}
+                      size="middle"
+                      scroll={{ x: 'max-content' }}
+                    />
+                  )}
+                </Card>
+              </Col>
+              
+              {/* 侧边栏 - 标注说明 */}
+              <Col xs={24} md={16}>
+                <Card 
+                  title="标注说明"
+                  variant="bordered"
+                  styles={{
+                    header: { padding: '16px 24px' },
+                    body: { padding: '16px 24px' }
+                  }}
+                >
+                  <div className="markdown-content" style={{ 
+                    lineHeight: 1.8,
+                    fontSize: '14px'
+                  }}>
+                    <ReactMarkdown>{markdownContent}</ReactMarkdown>
                   </div>
-                ) : error ? (
-                  <div style={{ textAlign: 'center', padding: '24px' }}>
-                    <Text type="danger">加载排行榜数据失败</Text>
-                  </div>
-                ) : (
-                  <Table
-                    columns={columns}
-                    dataSource={leaderboardData}
-                    pagination={false}
-                    size="middle"
-                    scroll={{ x: 'max-content' }}
-                  />
-                )}
-              </Card>
-            </Col>
-            
-            {/* 侧边栏 - 标注说明 */}
-            <Col xs={24} md={16}>
-              <Card 
-                title="标注说明"
-                variant="bordered"
-                styles={{
-                  header: { padding: '16px 24px' },
-                  body: { padding: '16px 24px' }
-                }}
-              >
-                <div className="markdown-content" style={{ 
-                  lineHeight: 1.8,
-                  fontSize: '14px'
-                }}>
-                  <ReactMarkdown>{markdownContent}</ReactMarkdown>
-                </div>
-              </Card>
-            </Col>
-          </Row>
-          {/* 底部按钮 */}
-          <Divider style={{ margin: '16px 0' }} />
-          <Row justify="center" style={{ marginBottom: '16px' }}>
-            <Space size="large">
-              <Button type="primary" size="large" style={{ minWidth: 150 }} onClick={handleStartAnnotation}>
-                开始标注
-              </Button>
-              <Button size="large" style={{ minWidth: 150 }} onClick={handleLogout}>
-                退出系统
-              </Button>
-            </Space>
-          </Row>
-        </div>
-      </Content>
-    <AppFooter />
-    </Layout>
+                </Card>
+              </Col>
+            </Row>
+            {/* 底部按钮 */}
+            <Divider style={{ margin: '16px 0' }} />
+            <Row justify="center" style={{ marginBottom: '16px' }}>
+              <Space size="large">
+                <Button type="primary" size="large" style={{ minWidth: 150 }} onClick={handleStartAnnotation}>
+                  开始标注
+                </Button>
+                <Button size="large" style={{ minWidth: 150 }} onClick={handleLogout}>
+                  退出系统
+                </Button>
+              </Space>
+            </Row>
+          </div>
+        </Content>
+      <AppFooter />
+      </Layout>
+    </App>
   );
 }
