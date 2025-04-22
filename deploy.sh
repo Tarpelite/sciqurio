@@ -108,13 +108,26 @@ fi
 
 sudo cp -r dist/* $CUSTOM_NGINX_FOLDER/
 
-# Update Nginx configuration using the nginx.conf file from frontend directory
+# Update Nginx configuration to use the new folder and port 8001
 NGINX_CONFIG="/etc/nginx/sites-available/sciqurio"
-sudo cp ../frontend/nginx.conf $NGINX_CONFIG
+sudo bash -c "cat > $NGINX_CONFIG" <<EOL
+server {
+    listen 28001;
+    server_name localhost;
 
-# Update port and path in the copied nginx.conf file if needed
-sudo sed -i "s|listen 80|listen 28001|g" $NGINX_CONFIG
-sudo sed -i "s|/var/www/html|$CUSTOM_NGINX_FOLDER|g" $NGINX_CONFIG
+    root /var/www/sciqurio-frontend;
+    index index.html;
+
+    location / {
+        try_files \$uri  \$uri/ /index.html;
+    }
+
+    location /assets/ {
+        root /var/www/sciqurio-frontend;
+        add_header Cache-Control "no-cache, no-store, must-revalidate";
+    }
+}
+EOL
 
 # Enable the new Nginx configuration
 sudo ln -sf $NGINX_CONFIG /etc/nginx/sites-enabled/sciqurio
