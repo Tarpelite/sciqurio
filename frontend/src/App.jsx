@@ -1,7 +1,7 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { ConfigProvider, App as AntApp } from 'antd';
-import zhCN from 'antd/locale/zh_CN';
+import { zhCN } from 'antd/locale/zh_CN';
 import { GuardProvider } from '@authing/guard-react';
 import '@authing/guard-react/dist/esm/guard.min.css';
 

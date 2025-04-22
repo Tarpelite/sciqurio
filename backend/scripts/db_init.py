@@ -139,9 +139,11 @@ async def insert_mock_propositions():
     await db.propositions.insert_many(sample_propositions)
 
 
-if __name__ == "__main__":
+async def main():
     print(f"Initializing database at {MONGO_URI}")
-    # Uncomment the appropriate function based on what you need to initialize
-    asyncio.run(upload_videos())
-    asyncio.run(insert_mock_propositions())
+    await upload_videos()
+    await insert_mock_propositions()
     print("Database initialization completed")
+
+if __name__ == "__main__":
+    asyncio.run(main())

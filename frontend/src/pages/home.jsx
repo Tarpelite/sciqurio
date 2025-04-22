@@ -29,39 +29,6 @@ import { FRONTEND_URL } from '../config';
 const { Content, Footer } = Layout;
 const { Title, Text } = Typography;
 
-// const leaderboardData = [
-//   {
-//     key: '1',
-//     rank: 1,
-//     username: 'Alice',
-//     points: 1250,
-//   },
-//   {
-//     key: '2',
-//     rank: 2,
-//     username: 'Bob',
-//     points: 980,
-//   },
-//   {
-//     key: '3',
-//     rank: 3,
-//     username: 'Charlie',
-//     points: 750,
-//   },
-//   {
-//     key: '4',
-//     rank: 4,
-//     username: 'David',
-//     points: 620,
-//   },
-//   {
-//     key: '5',
-//     rank: 5,
-//     username: 'Eve',
-//     points: 510,
-//   },
-// ];
-
 // 标注说明的Markdown内容
 const markdownContent = `
 

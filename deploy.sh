@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Exit on error
+set -e
+
 # Colors for output
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -42,6 +45,81 @@ if [ "$customize" = "y" ] || [ "$customize" = "Y" ]; then
     fi
 fi
 
+# Fix broken dependencies
+echo "Fixing broken dependencies..."
+sudo apt --fix-broken install -y || echo "No broken dependencies to fix"
+
+# Force remove conflicting MongoDB packages
+echo "Removing conflicting MongoDB packages..."
+sudo dpkg --remove --force-remove-reinstreq mongodb-server-core mongo-tools || echo "No conflicting MongoDB packages found"
+sudo apt-get purge -y mongodb mongodb-server mongodb-server-core mongo-tools || echo "No old MongoDB versions found"
+sudo apt-get autoremove -y
+sudo apt-get autoclean -y
+sudo rm -rf /var/lib/mongodb
+sudo rm -rf /var/log/mongodb
+
+# Install the latest MongoDB
+sudo apt-get install -y mongodb-org
+
+# Start MongoDB service
+sudo systemctl start mongod
+sudo systemctl enable mongod
+
+# Step 2: Install Python dependencies
+echo "Installing Python dependencies..."
+cd backend
+pip install -r requirements.txt
+
+# Step 3: Initialize the database
+echo "Initializing the database..."
+python scripts/db_init.py
+
+# Step 4: Start the FastAPI backend
+echo "Starting FastAPI backend..."
+uvicorn main:app --host 0.0.0.0 --port 8000 &
+
+# Step 5: Build and deploy the frontend
+echo "Building and deploying the frontend..."
+cd ../frontend
+# Update the config.js file if necessary
+sed -i "s|export const API_URL = .*|export const API_URL = '$API_URL';|" src/config.js
+sed -i "s|export const FRONTEND_URL = .*|export const FRONTEND_URL = 'http://localhost:8001';|" src/config.js
+
+# Install dependencies and build the frontend
+npm install
+npm run build
+
+# Install and configure Nginx
+echo "Installing and configuring Nginx..."
+# sudo apt-get -o Acquire::AllowInsecureRepositories=true install -y nginx || echo "Ignoring Nginx installation errors"
+
+# Use a custom folder for Nginx instead of /var/www/html/
+CUSTOM_NGINX_FOLDER="/var/www/sciqurio-frontend"
+sudo mkdir -p $CUSTOM_NGINX_FOLDER
+
+# Confirm the folder is correct before removing its contents
+if [[ "$CUSTOM_NGINX_FOLDER" == "/var/www/sciqurio-frontend" && -d "$CUSTOM_NGINX_FOLDER" ]]; then
+    echo "Clearing contents of $CUSTOM_NGINX_FOLDER..."
+    sudo find "$CUSTOM_NGINX_FOLDER" -mindepth 1 -delete
+else
+    echo "Error: $CUSTOM_NGINX_FOLDER is not a valid target folder. Aborting."
+    exit 1
+fi
+
+sudo cp -r dist/* $CUSTOM_NGINX_FOLDER/
+
+# Update Nginx configuration using the nginx.conf file from frontend directory
+NGINX_CONFIG="/etc/nginx/sites-available/sciqurio"
+sudo cp ../frontend/nginx.conf $NGINX_CONFIG
+
+# Update port and path in the copied nginx.conf file if needed
+sudo sed -i "s|listen 80|listen 28001|g" $NGINX_CONFIG
+sudo sed -i "s|/var/www/html|$CUSTOM_NGINX_FOLDER|g" $NGINX_CONFIG
+
+# Enable the new Nginx configuration
+sudo ln -sf $NGINX_CONFIG /etc/nginx/sites-enabled/sciqurio
+sudo systemctl restart nginx
+
 # Update docker-compose file with custom ports
 sed -i "s/- \"$BACKEND_PORT:$BACKEND_PORT\"/- \"$BACKEND_PORT:8000\"/g" docker-compose.yml
 sed -i "s/- \"$MONGO_PORT:$MONGO_PORT\"/- \"$MONGO_PORT:27017\"/g" docker-compose.yml
@@ -54,7 +132,9 @@ docker-compose up -d
 echo -e "${GREEN}Deployment completed!${NC}"
 echo -e "${BLUE}=======================================${NC}"
 echo -e "${GREEN}Services:${NC}"
-echo -e "${YELLOW}Frontend: http://localhost:3000${NC}"
+echo -e "${YELLOW}Frontend: http://localhost:8001${NC}"
 echo -e "${YELLOW}Backend API: http://localhost:$BACKEND_PORT${NC}"
 echo -e "${YELLOW}MongoDB: localhost:$MONGO_PORT${NC}"
 echo -e "${BLUE}=======================================${NC}"
+
+
