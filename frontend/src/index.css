@@ -139,3 +139,21 @@ body {
     padding-right: 16px;
   }
 }
+
+/* Header menu styling */
+.header-menu.ant-menu-dark.ant-menu-horizontal > .ant-menu-item-selected {
+  background-color: rgba(255, 255, 255, 0.2) !important;
+  border-radius: 4px;
+  font-weight: 500;
+}
+
+.header-menu.ant-menu-dark.ant-menu-horizontal > .ant-menu-item:hover {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+  border-radius: 4px;
+}
+
+.header-menu.ant-menu-dark.ant-menu-horizontal > .ant-menu-item {
+  margin: 0 4px;
+  padding: 0 16px;
+  transition: all 0.3s ease;
+}

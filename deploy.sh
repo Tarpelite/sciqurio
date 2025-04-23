@@ -120,7 +120,7 @@ fi
 
 # Update Nginx configuration to use the new folder and port 8000
 NGINX_CONFIG="/etc/nginx/sites-available/sciqurio"
-sudo cp niginx.conf $NGINX_CONFIG
+sudo cp nginx.conf $NGINX_CONFIG
 
 # Enable the new Nginx configuration
 sudo ln -sf $NGINX_CONFIG /etc/nginx/sites-enabled/sciqurio
