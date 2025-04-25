@@ -6,6 +6,7 @@ import json
 from motor.motor_asyncio import AsyncIOMotorClient
 import asyncio
 from datetime import datetime
+import codecs
 
 # MongoDB connection
 MONGO_URI = os.environ.get('MONGO_URI', 'mongodb://localhost:27017')
@@ -139,11 +140,74 @@ async def insert_mock_propositions():
     await db.propositions.insert_many(sample_propositions)
 
 
+async def insert_video(video_data):
+    """Insert a video into the database."""
+    result = await db.videos.insert_one(video_data)
+    return result.inserted_id
+
+async def insert_proposition(proposition_data):
+    """Insert a proposition into the database."""
+    await db.propositions.insert_one(proposition_data)
+
+async def process_props_file(props_path, dataset_name):
+    """Process props.json and insert videos and propositions into the database."""
+    with codecs.open(props_path, 'r', encoding='utf-8') as f:
+        props_data = json.load(f)
+
+    video_id_map = {}
+    for key, value in props_data.items():
+        video_id = value['video_id']
+        description = value['description']['zh']
+        video_filename = f"{video_id}.mp4"
+        storage_path = os.path.join("media/videos", dataset_name, video_filename)
+
+        # Insert video into the database
+        video_data = {
+            "original_path": os.path.join(dataset_name, video_filename),
+            "storage_path": storage_path,
+            "metadata": {
+                "description": description,
+                "dataset": dataset_name
+            },
+            "created_at": datetime.utcnow()
+        }
+        db_video_id = await insert_video(video_data)
+        video_id_map[video_id] = db_video_id
+
+    # Insert propositions for each video
+    for key, value in props_data.items():
+        video_id = value['video_id']
+        if video_id in video_id_map:
+            db_video_id = video_id_map[video_id]
+            description = value['description']['zh']
+            prop = value['propositions']
+            _type = prop['type']
+            _content = prop['Proposition_zh']
+            _justification = prop['Difficulty Justification'] if 'Difficulty Justification' in prop else prop['Incorrectness Explanation']
+            proposition_data = {
+                "video_id": db_video_id,
+                "propositions": [
+                    {
+                        "type": _type,
+                        "content": _content,
+                        "justification": _justification
+                    }
+                ],
+                "model_info": value['model_info'],
+                "human_created": False,
+                "human_info": {},
+                "created_at": datetime.utcnow()
+            }
+            await insert_proposition(proposition_data)
+
 async def main():
-    print(f"Initializing database at {MONGO_URI}")
-    await upload_videos()
-    await insert_mock_propositions()
-    print("Database initialization completed")
+    base_dir = "/home/chenty/ying.li/sciqurio/backend/media/videos"
+    for folder in os.listdir(base_dir):
+        folder_path = os.path.join(base_dir, folder)
+        if os.path.isdir(folder_path):
+            props_path = os.path.join(folder_path, "props.json")
+            if os.path.exists(props_path):
+                await process_props_file(props_path, folder)
 
 if __name__ == "__main__":
     asyncio.run(main())

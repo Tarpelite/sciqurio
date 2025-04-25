@@ -8,26 +8,21 @@ import {
   Row, 
   Col, 
   Result,
-  Statistic,
   theme,
   Divider,
-  Space,
   List
 } from 'antd';
 import { 
   CheckCircleFilled, 
-  TrophyFilled, 
-  RiseOutlined,
   HomeOutlined,
   FormOutlined
 } from '@ant-design/icons';
 import { useNavigate, useLocation } from 'react-router-dom';
 import confetti from 'canvas-confetti';
 import AppHeader from '@/components/AppHeader';
-import AppFooter from '@/components/AppFooter';
 
-const { Content, Footer } = Layout;
-const { Title, Text, Paragraph } = Typography;
+const { Content } = Layout;
+const { Title, Text } = Typography;
 
 // 注意：需要安装 canvas-confetti 依赖
 // npm install canvas-confetti --save
@@ -43,13 +38,6 @@ const AnnotationSuccess = () => {
     selectedHypothesis: location.state?.selectedHypothesis || { label: '未选择', content: '' },
     reason: location.state?.reason || '未提供理由'
   };
-
-  // 模拟用户获得的积分
-  const points = 50;
-  // 模拟用户累计标注次数
-  const annotationCount = 5;
-  // 模拟当前排名
-  const currentRank = 12;
 
   // 庆祝效果
   useEffect(() => {
@@ -72,16 +60,17 @@ const AnnotationSuccess = () => {
   };
 
   return (
-    <Layout style={{ minHeight: '100vh', width: '100%' }}>
-      <AppHeader />
-      
-      <Content style={{ width: '100%', background: '#f0f2f5' }}>
-        <div style={{ 
-          padding: '16px 24px',
-          width: '100%',
-          maxWidth: '1200px',
-          margin: '0 auto'
-        }}>
+    <Layout style={{ minHeight: '100vh' }}>
+      <Content
+        style={{
+          marginTop: 80,
+          minHeight: 0,
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'flex-start',
+        }}
+      >
+        <div style={{ maxWidth: 1200, width: '100%' }}>
           {/* 步骤指示器 */}
           <Card 
             variant="bordered" 
@@ -107,10 +96,9 @@ const AnnotationSuccess = () => {
               ]}
             />
           </Card>
-
           <Row gutter={[24, 24]}>
-            {/* 左侧 - 成功信息 */}
-            <Col xs={24} md={16}>
+            {/* 成功信息 - 调整为填满整个页面 */}
+            <Col xs={24}>
               <Card
                 variant="bordered"
                 bodyStyle={{ padding: '24px' }}
@@ -119,7 +107,7 @@ const AnnotationSuccess = () => {
                   status="success"
                   icon={<CheckCircleFilled style={{ color: token.colorSuccess }} />}
                   title="标注成功！"
-                  subTitle="感谢您的贡献，您的标注将帮助改进AI对科研文献的理解能力"
+                  subTitle="感谢您的贡献，您的标注将帮助改进AI的科学探索能力"
                   extra={[
                     <Button 
                       type="primary" 
@@ -162,65 +150,9 @@ const AnnotationSuccess = () => {
                 </List>
               </Card>
             </Col>
-            
-            {/* 右侧 - 数据统计 */}
-            <Col xs={24} md={8}>
-              <Card
-                title={
-                  <Space>
-                    <TrophyFilled style={{ color: '#faad14' }} />
-                    <span>标注成就</span>
-                  </Space>
-                }
-                variant="bordered"
-                styles={{
-                  header: { padding: '16px 24px' },
-                  body: { padding: '24px' }
-                }}
-              >
-                <Row gutter={[16, 24]}>
-                  <Col span={24}>
-                    <Statistic
-                      title="本次获得积分"
-                      value={points}
-                      valueStyle={{ color: token.colorSuccess }}
-                      prefix={<RiseOutlined />}
-                      suffix="分"
-                    />
-                  </Col>
-                  
-                  <Col span={12}>
-                    <Statistic
-                      title="累计标注次数"
-                      value={annotationCount}
-                      valueStyle={{ color: token.colorPrimary }}
-                    />
-                  </Col>
-                  
-                  <Col span={12}>
-                    <Statistic
-                      title="当前排名"
-                      value={currentRank}
-                      valueStyle={{ color: '#faad14' }}
-                      suffix="名"
-                    />
-                  </Col>
-                </Row>
-                
-                <Divider />
-                
-                <Paragraph>
-                  <Text type="secondary">
-                    您的标注质量将由专家审核，高质量的标注将获得额外积分奖励。继续保持！
-                  </Text>
-                </Paragraph>
-              </Card>
-            </Col>
           </Row>
         </div>
       </Content>
-
-    <AppFooter />
     </Layout>
   );
 };

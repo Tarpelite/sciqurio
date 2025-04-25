@@ -94,53 +94,33 @@ echo "Installing and configuring Nginx..."
 # sudo apt-get -o Acquire::AllowInsecureRepositories=true install -y nginx || echo "Ignoring Nginx installation errors"
 
 # Use a custom folder for Nginx instead of /var/www/html/
-CUSTOM_NGINX_FOLDER="/var/www/sciqurio-frontend"
-sudo mkdir -p $CUSTOM_NGINX_FOLDER
+sudo mkdir -p /var/www/sciqurio-frontend
 
 # Confirm the folder is correct before removing its contents
-if [[ "$CUSTOM_NGINX_FOLDER" == "/var/www/sciqurio-frontend" && -d "$CUSTOM_NGINX_FOLDER" ]]; then
-    echo "Clearing contents of $CUSTOM_NGINX_FOLDER..."
-    sudo find "$CUSTOM_NGINX_FOLDER" -mindepth 1 -delete
+if [[ "/var/www/sciqurio-frontend" == "/var/www/sciqurio-frontend" && -d "/var/www/sciqurio-frontend" ]]; then
+    echo "Clearing contents of /var/www/sciqurio-frontend..."
+    sudo find "/var/www/sciqurio-frontend" -mindepth 1 -delete
 else
-    echo "Error: $CUSTOM_NGINX_FOLDER is not a valid target folder. Aborting."
+    echo "Error: /var/www/sciqurio-frontend is not a valid target folder. Aborting."
     exit 1
 fi
 
 # Check if build directory exists and use it, otherwise try dist
 if [ -d "build" ]; then
     echo "Found 'build' directory, copying files from there..."
-    sudo cp -r build/* $CUSTOM_NGINX_FOLDER/
+    sudo cp -r build/* /var/www/sciqurio-frontend/
 elif [ -d "dist" ]; then
     echo "Found 'dist' directory, copying files from there..."
-    sudo cp -r dist/* $CUSTOM_NGINX_FOLDER/
+    sudo cp -r dist/* /var/www/sciqurio-frontend/
 else
     echo "Error: Neither 'build' nor 'dist' directory found. Build may have failed."
     exit 1
 fi
 
 # Update Nginx configuration to use the new folder and port 8000
-NGINX_CONFIG="/etc/nginx/sites-available/sciqurio"
-sudo cp nginx.conf $NGINX_CONFIG
+sudo cp nginx.conf /etc/nginx/sites-available/sciqurio
 
 # Enable the new Nginx configuration
-sudo ln -sf $NGINX_CONFIG /etc/nginx/sites-enabled/sciqurio
+sudo ln -sf /etc/nginx/sites-available/sciqurio /etc/nginx/sites-enabled/sciqurio
 sudo systemctl restart nginx
-
-# Update docker-compose file with custom ports
-sed -i "s/- \"$BACKEND_PORT:$BACKEND_PORT\"/- \"$BACKEND_PORT:8000\"/g" docker-compose.yml
-sed -i "s/- \"$MONGO_PORT:$MONGO_PORT\"/- \"$MONGO_PORT:27017\"/g" docker-compose.yml
-
-echo -e "${GREEN}Building and starting Docker containers...${NC}"
-echo -e "${YELLOW}API URL for frontend is set to: $API_URL${NC}"
-docker-compose build --build-arg API_URL=$API_URL
-docker-compose up -d
-
-echo -e "${GREEN}Deployment completed!${NC}"
-echo -e "${BLUE}=======================================${NC}"
-echo -e "${GREEN}Services:${NC}"
-echo -e "${YELLOW}Frontend: http://localhost:8000${NC}"
-echo -e "${YELLOW}Backend API: http://localhost:$BACKEND_PORT${NC}"
-echo -e "${YELLOW}MongoDB: localhost:$MONGO_PORT${NC}"
-echo -e "${BLUE}=======================================${NC}"
-
 

@@ -20,9 +20,6 @@ import ReactMarkdown from 'react-markdown';
 import '@/markdown.css'
 import { useGuard } from '@authing/guard-react'; // Import useGuard
 // 布局重置样式
-// import './global-reset.css';
-import AppHeader from '@/components/AppHeader';
-import AppFooter from '@/components/AppFooter';
 import { API_URL } from '@/config';
 import { api } from '../utils/api';
 import { FRONTEND_URL } from '../config';
@@ -186,25 +183,73 @@ export default function Home() {
     },
   ];
   return (
-    <App> {/* Wrap everything in App component to provide message context */}
-      {contextHolder} {/* Include the message context holder */}
-      <Layout style={{ minHeight: '100vh', width: '100%' }}>
-        <AppHeader />
-        
-        <Content style={{ width: '100%', background: '#f0f2f5' }}>
-          <div style={{ 
-            padding: '16px 24px',  // 减小内边距
-            width: '100%', 
-            background: '#f0f2f5',
-            paddingTop: '16px' // 添加顶部内边距
+    <Layout>
+      <Content
+        style={{
+          marginTop: 80,
+          minHeight: 0,
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'flex-start',
+        }}
+      >
+        <App>
+          {contextHolder}
+          <div style={{
+            maxWidth: 1200,
+            width: '100%'
           }}>
-            {/* 使用Grid系统布局 */}
             <Row gutter={[24, 24]} style={{ width: '100%', margin: 0 }}>
-              {/* 主内容区 - 排行榜表格 */}
-              <Col xs={24} md={8}>
+              {/* 左侧 - 标注说明 */}
+              <Col xs={24} md={16}>
+                <Card 
+                  title="标注说明"
+                  variant="bordered"
+                  styles={{
+                    header: { padding: '16px 24px' },
+                    body: { padding: '16px 24px' }
+                  }}
+                >
+                  <div className="markdown-content" style={{ 
+                    lineHeight: 1.8,
+                    fontSize: '14px'
+                  }}>
+                    <ReactMarkdown>{markdownContent}</ReactMarkdown>
+                  </div>
+                </Card>
+              </Col>
+              {/* 右侧 - 排行榜和按钮 */}
+              <Col
+                xs={24}
+                md={8}
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  minHeight: 500,
+                  height: '100%',
+                  // 让右侧内容填满高度
+                }}
+              >
+                {/* 按钮区域 */}
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'center',
+                  marginTop: 0, 
+                  paddingBottom: 8
+                }}>
+                  <Space size="large">
+                    <Button type="primary" size="large" style={{ minWidth: 120 }} onClick={handleStartAnnotation}>
+                      开始标注
+                    </Button>
+                    <Button size="large" style={{ minWidth: 120 }} onClick={handleLogout}>
+                      退出系统
+                    </Button>
+                  </Space>
+                </div>
                 <Card 
                   title="标注排行榜" 
                   variant="bordered"
+                  style={{ flex: 'none', marginBottom: 24 }}
                   styles={{
                     header: { padding: '16px 24px' },
                     body: { padding: 0 }
@@ -229,42 +274,10 @@ export default function Home() {
                   )}
                 </Card>
               </Col>
-              
-              {/* 侧边栏 - 标注说明 */}
-              <Col xs={24} md={16}>
-                <Card 
-                  title="标注说明"
-                  variant="bordered"
-                  styles={{
-                    header: { padding: '16px 24px' },
-                    body: { padding: '16px 24px' }
-                  }}
-                >
-                  <div className="markdown-content" style={{ 
-                    lineHeight: 1.8,
-                    fontSize: '14px'
-                  }}>
-                    <ReactMarkdown>{markdownContent}</ReactMarkdown>
-                  </div>
-                </Card>
-              </Col>
-            </Row>
-            {/* 底部按钮 */}
-            <Divider style={{ margin: '16px 0' }} />
-            <Row justify="center" style={{ marginBottom: '16px' }}>
-              <Space size="large">
-                <Button type="primary" size="large" style={{ minWidth: 150 }} onClick={handleStartAnnotation}>
-                  开始标注
-                </Button>
-                <Button size="large" style={{ minWidth: 150 }} onClick={handleLogout}>
-                  退出系统
-                </Button>
-              </Space>
             </Row>
           </div>
-        </Content>
-      <AppFooter />
-      </Layout>
-    </App>
+        </App>
+      </Content>
+    </Layout>
   );
 }

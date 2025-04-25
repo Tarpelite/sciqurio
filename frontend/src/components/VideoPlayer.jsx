@@ -6,7 +6,6 @@ import {
   SoundOutlined, 
   FullscreenOutlined,
   ReloadOutlined,
-  DownloadOutlined
 } from '@ant-design/icons';
 
 const { Title, Text } = Typography;
@@ -15,6 +14,7 @@ const { Title, Text } = Typography;
  * 可复用的视频播放器组件
  * @param {string} src - 视频源URL
  * @param {string} title - 视频标题
+ * @param {string} link - 标题链接URL
  * @param {string} description - 视频描述
  * @param {boolean} autoPlay - 是否自动播放
  * @param {boolean} controls - 是否显示浏览器默认控件
@@ -23,8 +23,9 @@ const { Title, Text } = Typography;
 const VideoPlayer = ({ 
   src, 
   title, 
+  link,
   description, 
-  autoPlay = false,
+  autoPlay = true,
   controls = false,
   onEnded = () => {}
 }) => {
@@ -35,6 +36,30 @@ const VideoPlayer = ({
   const [volume, setVolume] = useState(1);
   const [showVolumeControl, setShowVolumeControl] = useState(false);
   const [loading, setLoading] = useState(true);
+  
+  // 处理自动播放（考虑浏览器策略）
+  useEffect(() => {
+    if (autoPlay && videoRef.current) {
+      const video = videoRef.current;
+      // 大多数浏览器要求自动播放的视频必须静音
+      video.muted = true;
+      const playPromise = video.play();
+      
+      if (playPromise !== undefined) {
+        playPromise
+          .then(() => {
+            // 自动播放成功
+            setPlaying(true);
+            // 保持静音状态，不再尝试取消静音
+          })
+          .catch(error => {
+            // 自动播放被阻止
+            console.log("自动播放被阻止:", error);
+            setPlaying(false);
+          });
+      }
+    }
+  }, [autoPlay]);
 
   // 更新播放进度
   useEffect(() => {
@@ -129,14 +154,12 @@ const VideoPlayer = ({
 
   return (
     <Card 
-      variant="bordered" // Updated to use variant instead of bordered
-      
+      variant="bordered"
       className="video-player-container"
       styles={{
         header: { padding: '16px 24px' },
         body: { 
           padding: '0 0 16px 0',
-          // 视频容器的最小高度，确保在视频加载前就占据足够空间
           minHeight: '400px' 
         }
       }}
@@ -144,7 +167,6 @@ const VideoPlayer = ({
       <div style={{ 
         position: 'relative',
         width: '100%',
-        // 视频容器使用padding-top技术保持纵横比，防止布局偏移
         paddingTop: '56.25%', // 16:9 纵横比
         background: '#f0f0f0'
       }}>
@@ -168,6 +190,7 @@ const VideoPlayer = ({
           onLoadedData={handleLoadedData}
           onEnded={handleVideoEnded}
           preload="auto"
+          muted={true}
         />
 
         {/* 自定义控制器 */}
@@ -190,7 +213,7 @@ const VideoPlayer = ({
               value={currentTime} 
               max={duration || 100} 
               onChange={handleProgressChange} 
-              tooltip={{ open: false }} // Updated to use tooltip.open instead of tooltipVisible
+              tooltip={{ open: false }}
               style={{ margin: '0 0 8px 0' }}
             />
             
@@ -277,7 +300,23 @@ const VideoPlayer = ({
       {/* 视频信息 */}
       {(title || description) && (
         <div style={{ padding: '16px' }}>
-          {title && <Title level={4} style={{ margin: '0 0 8px 0' }}>{title}</Title>}
+          {title && 
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Title level={4} style={{ margin: '0 0 8px 0' }}>
+                {title}
+              </Title>
+              {link && (
+                <a 
+                  href={link} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  style={{ fontSize: 13, color: '#1677ff', marginLeft: 4 }}
+                >
+                  【查看详情】
+                </a>
+              )}
+            </div>
+          }
           {description && <Text type="secondary">{description}</Text>}
         </div>
       )}

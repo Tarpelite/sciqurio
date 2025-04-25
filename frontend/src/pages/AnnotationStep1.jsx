@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Layout, 
   Card, 
@@ -10,38 +10,53 @@ import {
   Col, 
   Space,
   Form,
+  Radio,
   message,
   theme,
-  App
+  App 
 } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import VideoPlayer from '@/components/VideoPlayer';
-import AppHeader from '@/components/AppHeader';
-import AppFooter from '@/components/AppFooter';
 import { API_URL } from '@/config';
 import { api } from '../utils/api';
+import { refreshLayout } from '../utils/layoutUtils';
 
-const { Content, Footer } = Layout;
-const { Title, Text, Paragraph } = Typography;
+const { Content } = Layout;
+const { Text, Paragraph } = Typography;
 const { TextArea } = Input;
 
 const AnnotationStep1 = () => {
   const { token } = theme.useToken();
   const navigate = useNavigate();
   const [form] = Form.useForm();
-  const [hypothesis, setHypothesis] = useState('');
+  const [selectedHypothesis, setSelectedHypothesis] = useState(null);
+  const [reason, setReason] = useState('');
   const [loading, setLoading] = useState(false);
+  const [propositionsLoading, setPropositionsLoading] = useState(true);
+  const [videoLoading, setVideoLoading] = useState(true);
   const [videoInfo, setVideoInfo] = useState({
     src: '',
     title: '',
     description: '',
     video_id: ''
   });
-  const [videoLoading, setVideoLoading] = useState(true);
+  
+  // Add a ref to track if API call has been made
+  const apiCallMadeRef = useRef(false);
+  
+  // Store proposition IDs
+  const [propositions, setPropositions] = useState({
+    prop1: { id: '', content: '' },
+    prop2: { id: '', content: '' }
+  });
 
-  // Fetch video info when component mounts
+  // Fetch random video when component mounts
   useEffect(() => {
     const fetchVideoInfo = async () => {
+      // Check if API call has already been made to prevent duplicate calls
+      if (apiCallMadeRef.current) return;
+      apiCallMadeRef.current = true;
+      
       try {
         const response = await api.get(`${API_URL}/api/random_video`);
         
@@ -49,25 +64,47 @@ const AnnotationStep1 = () => {
           throw new Error('Failed to fetch video data');
         }
         
-        // Store video_id in localStorage for persistence
+        const dataset = response.data.dataset;
+        const wellLink = `https://polymathic-ai.org/the_well/datasets/${dataset}/`;
+        const wellTitle = `The Well (${dataset})`;
+        
+        // Store video_id in localStorage for persistence between steps
         localStorage.setItem('current_video_id', response.data.video_id);
+        // Store full video info for easy retrieval in step2
+        localStorage.setItem('current_video_info', JSON.stringify({
+          src: `${API_URL}/${response.data.storage_path}`,
+          title: wellTitle,
+          link: wellLink,
+          description: response.data.description,
+          video_id: response.data.video_id
+        }));
         
         setVideoInfo({
           src: `${API_URL}/${response.data.storage_path}`,
-          title: response.data.dataset,
+          title: wellTitle,
+          link: wellLink,
           description: response.data.description,
           video_id: response.data.video_id
         });
+        
+        // After setting video info, fetch propositions for this video
+        fetchPropositions(response.data.video_id);
       } catch (error) {
         console.error('Error fetching video data:', error);
         message.error('Failed to load video data');
         // Fallback to default video info
+        const defaultDataset = 'convective_envelope_rsg';
+        const defaultWellLink = `https://polymathic-ai.org/the_well/datasets/${defaultDataset}/`;
+        const defaultWellTitle = `The Well (${defaultDataset})`;
+        
         setVideoInfo({
           src: 'https://sample-videos.com/video321/mp4/720/big_buck_bunny_720p_1mb.mp4',
-          title: '科学文献标注示例视频',
-          description: '本视频将介绍如何对科学文献中的假设进行标注，请观看后在下方输入您认为的主要科学假设。',
+          title: defaultWellTitle,
+          link: defaultWellLink,
+          description: '请选择您认为最接近的假设，并提供选择理由。',
           video_id: 'default_video_id'
         });
+        fetchPropositions('default_video_id');
       } finally {
         setVideoLoading(false);
       }
@@ -76,12 +113,93 @@ const AnnotationStep1 = () => {
     fetchVideoInfo();
   }, []);
 
-  // 处理视频结束事件
-  const handleVideoEnded = () => {
-    message.success('视频播放完成，请输入您的假设');
+  // Fetch propositions for comparison
+  const fetchPropositions = async (videoId) => {
+    if (!videoId) {
+      message.error('未获取视频ID，无法加载假设数据');
+      setPropositionsLoading(false);
+      refreshLayout();
+      return;
+    }
+    
+    setPropositionsLoading(true);
+    
+    try {
+      const response = await api.get(`${API_URL}/api/propositions/${videoId}`);
+      
+      if (response.data && response.data.length >= 2) {
+        const propData = {
+          prop1: { 
+            id: response.data[0].id, 
+            content: response.data[0].content 
+          },
+          prop2: { 
+            id: response.data[1].id,
+            content: response.data[1].content
+          }
+        };
+        setPropositions(propData);
+        // 存储到 localStorage，方便 step2 使用
+        localStorage.setItem('current_propositions', JSON.stringify([
+          { id: propData.prop1.id, label: '假设A', content: propData.prop1.content },
+          { id: propData.prop2.id, label: '假设B', content: propData.prop2.content }
+        ]));
+      } else {
+        const fallback = {
+          prop1: { 
+            id: 'default1', 
+            content: '未找到足够的假设数据，这是默认假设A。' 
+          },
+          prop2: { 
+            id: 'default2',
+            content: '未找到足够的假设数据，这是默认假设B。'
+          }
+        };
+        setPropositions(fallback);
+        localStorage.setItem('current_propositions', JSON.stringify([
+          { id: fallback.prop1.id, label: '假设A', content: fallback.prop1.content },
+          { id: fallback.prop2.id, label: '假设B', content: fallback.prop2.content }
+        ]));
+        message.warning('可用的假设数据不足，使用默认数据');
+      }
+    } catch (error) {
+      const fallback = {
+        prop1: { 
+          id: 'error1', 
+          content: '获取假设数据失败，这是默认假设A。' 
+        },
+        prop2: { 
+          id: 'error2',
+          content: '获取假设数据失败，这是默认假设B。'
+        }
+      };
+      setPropositions(fallback);
+      localStorage.setItem('current_propositions', JSON.stringify([
+        { id: fallback.prop1.id, label: '假设A', content: fallback.prop1.content },
+        { id: fallback.prop2.id, label: '假设B', content: fallback.prop2.content }
+      ]));
+      message.error('获取假设数据失败，请刷新重试');
+    } finally {
+      setPropositionsLoading(false);
+      refreshLayout();
+    }
   };
 
-  // 处理下一步
+  // 假设选项
+  const hypothesisOptions = [
+    {
+      value: propositions.prop1.id || 'A',
+      label: '假设A',
+      content: propositions.prop1.content || '加载中...'
+    },
+    {
+      value: propositions.prop2.id || 'B',
+      label: '假设B',
+      content: propositions.prop2.content || '加载中...'
+    }
+  ];
+
+  // 处理下一步 - Modified to submit comparison data to API
   const handleNextStep = async () => {
     try {
       const values = await form.validateFields();
@@ -89,11 +207,12 @@ const AnnotationStep1 = () => {
       
       // Get user info from localStorage
       const userInfoString = localStorage.getItem('user_info');
-      let userInfo = {};
+      let userId = '';
       
       try {
         if (userInfoString) {
-          userInfo = JSON.parse(userInfoString);
+          const userInfo = JSON.parse(userInfoString);
+          userId = userInfo.id || '';
         } else {
           message.warning('用户信息不存在，请重新登录');
           setLoading(false);
@@ -106,40 +225,34 @@ const AnnotationStep1 = () => {
         return;
       }
       
-      // Prepare data for API submission
-      const submissionData = {
-        video_id: videoInfo.video_id,
-        name: userInfo.name,
-        email: userInfo.email,
-        content: values.hypothesis,
-        student_id: userInfo.customData.student_id
+      // Prepare comparison data for submission
+      const comparisonData = {
+        proposition_id1: propositions.prop1.id,
+        proposition_id2: propositions.prop2.id, // 修正拼写
+        chosen: values.hypothesis, // The ID of the selected proposition
+        reason: values.reason,
+        user_id: userId
       };
       
       try {
-        // Submit hypothesis to backend
-        const response = await api.post(`${API_URL}/api/propositions`, submissionData);
+        // Submit comparison to backend
+        const response = await api.post(`${API_URL}/api/comparison`, comparisonData);
         
         if (response.status === 200 || response.status === 201) {
-          message.success('假设提交成功');
+          message.success('比较提交成功');
           
-          // Navigate to next step with complete video information
-          navigate('/annotation/step2', { 
-            state: { 
-              userHypothesis: values.hypothesis,
-              videoId: videoInfo.video_id,
-              videoInfo: {
-                src: videoInfo.src,
-                title: videoInfo.title,
-                description: videoInfo.description
-              }
-            } 
-          });
+          // Store the user's selection and reason
+          localStorage.setItem('selected_hypothesis', values.hypothesis);
+          localStorage.setItem('selection_reason', values.reason);
+          
+          // Navigate to next step with video information
+          navigate('/annotation/step2');
         } else {
           throw new Error('提交失败，请重试');
         }
       } catch (error) {
-        console.error('提交假设失败:', error);
-        message.error('提交假设失败，请重试');
+        console.error('提交比较失败:', error);
+        message.error('提交比较失败，请重试');
       } finally {
         setLoading(false);
       }
@@ -148,121 +261,150 @@ const AnnotationStep1 = () => {
     }
   };
 
+  // 处理视频结束事件
+  const handleVideoEnded = () => {
+    message.success('视频播放完成，请选择一个假设');
+  };
+
   return (
-    <App> {/* Wrap the entire component in App */}
-      <Layout style={{ minHeight: '100vh', width: '100%' }}>
-        <AppHeader />
-        
-        <Content style={{ width: '100%', background: '#f0f2f5' }}>
-          <div style={{ 
-            padding: '16px 24px',
-            width: '100%',
-            maxWidth: '1200px',
-            margin: '0 auto'
-          }}>
-            {/* 步骤指示器 */}
-            <Card 
-              variant="bordered" 
-              style={{ marginBottom: '24px', bodyStyle: { padding: 0 } }}
-            >
-              <Steps
-                current={0}
-                items={[
-                  {
-                    title: '提出假设',
-                    description: '观看视频，提出您的科学假设',
-                  },
-                  {
-                    title: '选择和论证',
-                    description: '从给定选项中选择并论证',
-                  },
-                  {
-                    title: '完成',
-                    description: '提交您的标注结果',
-                  },
-                ]}
-              />
-            </Card>
-
-            <Row gutter={[24, 24]}>
-              {/* 左侧 - 视频播放器 */}
-              <Col xs={24} md={14}>
-                {videoLoading ? (
-                  <Card loading={true} />
-                ) : (
-                  <VideoPlayer
-                    src={videoInfo.src}
-                    title={videoInfo.title}
-                    description={videoInfo.description}
-                    onEnded={handleVideoEnded}
-                  />
-                )}
-              </Col>
-              
-              {/* 右侧 - 假设输入 */}
-              <Col xs={24} md={10}>
-                <Card
-                  title="输入您的科学假设"
-                  variant="bordered"
-                  styles={{
-                    header: { padding: '16px 24px' },
-                    body: { padding: '16px 24px' } // Updated to use styles.body
-                  }}
+    <Layout 
+    style={{ minHeight: '100vh' }}
+    >
+      <Content
+        style={{
+          marginTop: 80, // Header高度
+          minHeight: 0, 
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'flex-start',
+        }}
+      >
+        <div style={{ maxWidth: 1200, width: '100%' }}>
+          {/* 步骤指示器 */}
+          <Card 
+            variant="bordered" 
+            style={{ marginBottom: '24px' }}
+            styles={{ body: { padding: '24px' } }}
+          >
+            <Steps
+              current={0}
+              items={[
+                {
+                  title: '选择和论证',
+                  description: '从给定选项中选择并论证',
+                },
+                {
+                  title: '提出假设',
+                  description: '观看视频，提出您的科学假设',
+                },
+                {
+                  title: '完成',
+                  description: '提交您的标注结果',
+                },
+              ]}
+            />
+          </Card>
+          <Row gutter={[24, 24]}>
+            {/* 左侧 - 视频播放器 */}
+            <Col xs={24} md={14}>
+              {videoLoading ? (
+                <Card loading={true} style={{ minHeight: 600 }} />
+              ) : (
+                <VideoPlayer
+                  src={videoInfo.src}
+                  title={videoInfo.title}
+                  link={videoInfo.link}
+                  description={videoInfo.description}
+                  onEnded={handleVideoEnded}
+                />
+              )}
+            </Col>
+            
+            {/* 右侧 - 假设选择和理由输入 */}
+            <Col xs={24} md={10}>
+              <Card
+                title="选择更合适的假设"
+                variant="bordered"
+                styles={{
+                  header: { padding: '16px 24px' },
+                  body: { padding: '16px 24px' }
+                }}
+                loading={propositionsLoading || videoLoading}
+              >
+                <Form 
+                  form={form}
+                  layout="vertical"
+                  requiredMark={false}
                 >
-                  <Paragraph>
-                    请根据视频内容，提出您认为的主要科学假设。一个好的科学假设应该是具体的、可验证的，并且与视频中的内容相关。
-                  </Paragraph>
-                  
-                  <Form 
-                    form={form}
-                    layout="vertical"
-                    requiredMark={false}
+                  <Form.Item
+                    name="hypothesis"
+                    label="请选择一个假设"
+                    rules={[{ required: true, message: '请选择一个假设' }]}
                   >
-                    <Form.Item
-                      name="hypothesis"
-                      label="您的假设"
-                      rules={[
-                        { 
-                          required: true, 
-                          message: '请输入您的科学假设' 
-                        },
-                        {
-                          min: 10,
-                          message: '假设至少需要10个字符'
-                        }
-                      ]}
+                    <Radio.Group 
+                      onChange={(e) => {
+                        setSelectedHypothesis(e.target.value);
+                        refreshLayout();
+                      }}
+                      style={{ width: '100%' }}
                     >
-                      <TextArea
-                        placeholder="请输入您的科学假设..."
-                        autoSize={{ minRows: 4, maxRows: 8 }}
-                        maxLength={500}
-                        showCount
-                        onChange={(e) => setHypothesis(e.target.value)}
-                      />
-                    </Form.Item>
-                    
-                    <Form.Item>
-                      <Button
-                        type="primary"
-                        size="large"
-                        onClick={handleNextStep}
-                        loading={loading}
-                        disabled={!hypothesis.trim() || videoLoading}
-                        style={{ width: '100%' }}
-                      >
-                        下一步
-                      </Button>
-                    </Form.Item>
-                  </Form>
-                </Card>
-              </Col>
-            </Row>
-          </div>
-        </Content>
-
-        <AppFooter />
-      </Layout>
-    </App>
+                      <Space direction="vertical" style={{ width: '100%' }}>
+                        {hypothesisOptions.map(option => (
+                          <Radio 
+                            key={option.value} 
+                            value={option.value}
+                            style={{ 
+                              width: '100%',
+                              display: 'flex',
+                              alignItems: 'flex-start',
+                              marginBottom: '8px'
+                            }}
+                          >
+                            <div>
+                              <Text strong>{option.label}</Text>: {option.content}
+                            </div>
+                          </Radio>
+                        ))}
+                      </Space>
+                    </Radio.Group>
+                  </Form.Item>
+                  
+                  <Form.Item
+                    name="reason"
+                    label="请说明您选择该假设的理由"
+                    rules={[
+                      { required: true, message: '请输入您的选择理由' },
+                      { min: 20, message: '理由至少需要20个字符' }
+                    ]}
+                  >
+                    <TextArea
+                      placeholder="请详细说明您为什么选择该假设..."
+                      autoSize={{ minRows: 6, maxRows: 8 }}
+                      maxLength={1000}
+                      showCount
+                      onChange={(e) => setReason(e.target.value)}
+                    />
+                  </Form.Item>
+                  
+                  <Form.Item>
+                    <Button
+                      type="primary"
+                      size="large"
+                      onClick={handleNextStep}
+                      loading={loading}
+                      disabled={!selectedHypothesis || !reason.trim()}
+                      style={{ width: '100%' }}
+                    >
+                      下一步
+                    </Button>
+                  </Form.Item>
+                </Form>
+              </Card>
+            </Col>
+          </Row>
+        </div>
+      </Content>
+    </Layout>
   );
 };
 
